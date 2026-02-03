@@ -1,0 +1,147 @@
+---
+title: "Biostat 620 Lab 3"
+format: html
+author: "Nate Truettner"
+embed-resources: TRUE
+---
+
+## 1
+```{r}
+met <- read.csv("met_all.gz")
+```
+
+## 2
+```{r}
+dim(met)
+head(met)
+tail(met)
+```
+The met dataset has 2,377,343 rows and 30 columns.
+
+## 3
+
+```{r}
+str(met)
+```
+It looks like our variables are a mix of character, numeric, and integer variables.
+
+## 4
+```{r}
+table(met$year)
+table(met$day)
+table(met$hour)
+table(met$month)
+summary(met$temp)
+summary(met$elev)
+summary(met$wind.sp)
+```
+It looks like all of the observations were taken in August 2019 at various points throughout the day. Examining temperature, we see there is an extreme minimum observation (-40 C); I think this could be a mistake. The wind speed and temperature variables have a lot of NA entries. The 9999 elevation value should be removed as well.
+
+```{r}
+# Replace elevations of 9999 with NA
+library(dplyr)
+met <- met %>%
+  mutate(elev = na_if(elev, 9999))
+
+summary(met$elev)
+```
+After removing the anomalous elevation, we see that the maximum elevation station is located 4113 meters above sea level.
+
+```{r}
+# Remove anomalous temperature observations
+met <- met %>%
+  mutate(temp = na_if(temp, -40))
+met <- met %>%
+  filter(!is.na(temp))
+summary(met$temp)
+```
+The minimum temperature recorded is now -17.2 degrees Celsius, which is still very low and warrants investigation.
+
+## 5
+```{r}
+summary(met$elev)
+```
+The minimum elevation of 13 meters below sea level is reasonable, and 4113 meters above is high but also reasonable. The location (38.8, -104.3) has some very low temperature readings, -17.2 and -17 degrees Celsius. This location is actually Ellicott, Colorado, and it would be very shocking if it was actually -17 degrees Celsius there in August, so these values should be removed. We also have observations of -17 degrees in Texas in August, so those should be removed as well.
+
+```{r}
+met <- met %>%
+  mutate(temp = na_if(temp, -17.2))
+met <- met %>%
+  mutate(temp = na_if(temp, -17))
+met <- met %>%
+  filter(!is.na(temp))
+```
+
+## 6
+```{r}
+max_elevation = max(met$elev, na.rm = TRUE)
+high_station <- filter(met,
+                       elev == max_elevation)
+
+summary(high_station$wind.sp)
+summary(high_station$temp)
+#Temperature and wind speed
+cor(high_station$temp, high_station$wind.sp, use = "complete.obs")
+#Temperature and hour
+cor(high_station$hour, high_station$temp, use = "complete.obs")
+#Temperature and day
+cor(high_station$day, high_station$temp, use = "complete.obs")
+#Wind speed and hour
+cor(high_station$hour, high_station$wind.sp, use = "complete.obs")
+#Wind speed and day
+cor(high_station$day, high_station$wind.sp, use = "complete.obs")
+
+```
+We notice that temperature and wind speed both increase throughout the day, while wind speed increases as the month goes on and temperature decreases. A higher temperature is correlated with a lower wind speed, which makes sense.
+
+## 7
+```{r}
+hist(met$temp)
+hist(met$wind.sp)
+summary(met$wind.sp)
+hist(met$elev)
+```
+All three variables look good.
+
+```{r}
+library(leaflet)
+leaflet(high_station) %>%
+  addProviderTiles('OpenStreetMap') %>% 
+  addCircles(lat=~lat,lng=~lon, opacity=1, fillOpacity=1, radius=100)
+```
+The highest elevation station is just west of Denver, in the mountains.
+
+```{r}
+library(lubridate)
+high_station$date <- with(high_station, ymd_h(paste(year, month, day, hour, sep= ' ')))
+summary(high_station$date)
+high_station <- high_station[order(high_station$date), ]
+head(high_station)
+```
+
+```{r}
+plot(high_station$date, high_station$temp)
+```
+```{r}
+plot(high_station$date, high_station$wind.sp)
+```
+Examining these time series plots, we see fluctuations in both temperature and wind speed as time passes. Temperature has large fluctuations within days, which makes sense as it cools down at night. Generally, high temperatures are consistent through the month. Wind speed is generally lower earlier in August and increases later in the month, but this varies quite a bit as well.
+
+## 8
+```{r}
+plot(high_station$temp, high_station$dew.point)
+```
+Continuing my focus on the highest elevation station, I wanted to plot the relationship between temperature and dew point. Typically, dew point will rise with temperature provided that there is moisture added, and we see that relationship hold true in the plot.
+
+```{r}
+plot(met$atm.press, met$dew.point)
+```
+I also know that pressure and dew point have a relationship, but it's never been clear to me what the specific mechanism is. I plotted atmospheric pressure against dew point for the full dataset and found some interesting results; there is a large clump of pressures between 1000 and 1020 with a wide range of dew points. There doesn't appear to be a clear positive or negative relationship between the variables.
+
+
+
+
+
+
+
+
