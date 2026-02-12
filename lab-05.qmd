@@ -1,0 +1,126 @@
+---
+title: "Lab 5 - Data Wrangling"
+author: "Nate Truettner"
+format: html
+---
+
+## 1
+```{r}
+library(dplyr)
+library(tidyr)
+```
+
+## 2
+```{r}
+url <- 'https://raw.githubusercontent.com/dmcable/BIOSTAT620W26/main/data/covid/population.csv'
+if (!file.exists("covid_processed.csv"))
+  download.file(
+    url = url,
+    destfile = "population.csv",
+    method   = "libcurl",
+    timeout  = 60
+    )
+population <- read.csv('population.csv')
+
+head(population)
+```
+## 3
+```{r}
+colnames(population) <- as.character(unlist(population[1, ]))
+population <- population[-1, ]
+population <- population %>%
+  dplyr::select(-`1`, -state)
+population <- population %>%
+  rename(state_name = NAME)
+
+state_lookup <- data.frame(
+  state_name = c(state.name, "District of Columbia", "Puerto Rico"),
+  state = c(state.abb, "DC", "PR")
+)
+
+population <- population %>%
+  left_join(state_lookup, by = "state_name")
+
+```
+
+## 4
+```{r}
+library(jsonlite)
+url <- "https://github.com/datasciencelabs/2024/raw/refs/heads/main/data/regions.json"
+regions <- fromJSON(url) # use fromJSON to read as a data.frame
+regions <- regions %>%
+  unnest(states)
+regions <- regions %>%
+  mutate(
+    region_name = ifelse(region_name == "New York and New Jersey, Puerto Rico, Virgin Islands",
+                         "NYPR",
+                         region_name)
+  )
+regions <- regions %>%
+  mutate(
+    region = as.character(region)
+  )
+regions <- regions %>%
+  mutate(region = factor(region))
+regions <- regions %>%
+  rename(state_name = states)
+head(regions)
+```
+## 5
+```{r}
+population <- population %>%
+  left_join(regions %>% dplyr::select(state_name, region, region_name),
+            by = "state_name")
+head(population)
+```
+## 6
+```{r}
+library(httr2)
+api <- "https://data.cdc.gov/resource/pwn4-m3yp.json"
+request <- request(paste0(api,paste0("?$limit=10000000000")))
+response <- request |> req_perform() |> resp_body_string()
+cases_raw <- fromJSON(response)
+head(cases_raw)
+```
+If we didn't add the limit argument to the request function, it would have returned only the default number of rows, which I found to be 1000.
+
+## 7
+```{r}
+library(lubridate)
+cases_df <- cases_raw %>%
+  transmute(
+    state = state,                 
+    date = ymd_hms(end_date),               
+    cases = as.numeric(new_cases)
+  )
+
+head(cases_df)
+```
+## 8
+```{r}
+cases_pop <- cases_df %>%
+  left_join(population %>% dplyr::select(state, state_name, POP_2020, region, region_name),
+            by = "state")
+
+cases_pop <- cases_pop %>%
+  mutate(date = as_date(date))
+
+cases_pop <- cases_pop %>%
+  mutate(
+    epiweek = epiweek(date),
+    epiyear = epiyear(date)
+  )
+
+cases_pop <- cases_pop %>%
+  arrange(state, date)
+
+head(cases_pop)
+
+```
+
+
+
+
+
+
+
