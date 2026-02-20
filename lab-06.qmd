@@ -1,0 +1,138 @@
+---
+title: "Lab 6: Text Mining"
+author: "Nate Truettner"
+format: html
+embed-resources: TRUE
+---
+
+## Setup
+```{r}
+library(dplyr)
+library(ggplot2)
+library(tidytext)
+library(stringr)
+library(tidyr)
+library(conflicted)
+conflict_prefer("count", "dplyr")
+conflict_prefer("filter", "dplyr")
+conflict_prefer("select", "dplyr")
+url <- "https://raw.githubusercontent.com/dmcable/BIOSTAT620W26/main/data/mtsamples/mtsamples.csv"
+medical <- read.csv(url)
+```
+
+## 1
+```{r}
+medical %>%
+  dplyr::count(medical_specialty, sort = TRUE)
+```
+We have 40 different specialties listed in this dataset. Surgery is far and away the most common specialty with over 1100 observations, while there are many specialties that have fewer than 100 observations; this is not an even distribution. "General medicine" is very broad and likely includes multiple specialties. Other than that, I do not notice a ton of overlap among the specialties.
+
+## 2
+```{r}
+medical_words <- medical |>
+  unnest_tokens(word, transcription) |>
+  count(word, sort = TRUE)
+top20 <- medical_words[1:20,]
+ggplot(top20, aes(x = reorder(word, n), y = n)) +
+  geom_col(fill='orange') +
+  coord_flip()
+```
+This result makes sense as the transcription column consists of full sentences that include many stop words; therefore we would expect to see "the", "and", and "to" quite a bit among others. "Patient" is the most common non-stop word, which makes sense as the transcriptions often discuss the patient. Beyond this, we won't be able to learn a whole lot from this plot.
+
+## 3
+```{r}
+medical_words <- medical |>
+  unnest_tokens(word, transcription) |>
+  anti_join(stop_words, by = "word") |>     
+  filter(!str_detect(word, "^[0-9]+$")) |> 
+  count(word, sort = TRUE)
+top20 <- medical_words[1:20,]
+ggplot(top20, aes(x = reorder(word, n), y = n)) +
+  geom_col(fill='orange') +
+  coord_flip()
+```
+Now that we have removed the stop words, it becomes more clear what the transcriptions actually commonly consist of. Words like "procedure", "pain", "blood", and "anesthesia" now appear in the top 20, which are much more descriptive and reflect what caregivers are seeing in their hospitals.
+
+## 4
+```{r}
+medical_grams <- medical |>
+  unnest_ngrams(ngram, transcription, n = 2) |>
+  count(ngram, sort = TRUE)
+top20_gram <- medical_grams[1:20,]
+ggplot(top20_gram, aes(x = reorder(ngram, n), y = n)) +
+  geom_col(fill='chartreuse') +
+  coord_flip()
+
+medical_grams <- medical |>
+  unnest_ngrams(ngram, transcription, n = 3) |>
+  count(ngram, sort = TRUE)
+top20_gram <- medical_grams[1:20,]
+ggplot(top20_gram, aes(x = reorder(ngram, n), y = n)) +
+  geom_col(fill='chartreuse') +
+  coord_flip()
+```
+Looking at the most common bi-grams, we notice that many of these common bi-grams are just combinations of stop words, like "of the" and "in the". Some interesting ones include "history of" and "was placed", but without removing stop words it's not very informative. The tri-gram plot is a bit more interesting, as snippets like "the operating room", "prepped and draped", and "tolerated the procedure" are much more informative.
+
+## 5
+```{r}
+medical |>
+  unnest_ngrams(ngram, transcription, n = 2) |>
+  separate(ngram, into = c("word1", "word2"), sep = " ") |>
+  dplyr::select(word1, word2) |>
+  dplyr::filter(word1 == "patient") |>
+  dplyr::count(word2, sort = TRUE) |>
+  head(20)
+
+medical |>
+  unnest_ngrams(ngram, transcription, n = 2) |>
+  separate(ngram, into = c("word1", "word2"), sep = " ") |>
+  dplyr::select(word1, word2) |>
+  dplyr::filter(word2 == "patient") |>
+  dplyr::count(word1, sort = TRUE) |>
+  head(20)
+```
+I chose "patient" as my word to be analyzed; common words that follow patient are "tolerated", "denies",  and "states". Common words that precede patient include "history", "procedure", and "female". I'm guessing that history and procedure were the end of the previous sentence in these cases as it wouldn't make sense to have them immediately precede patient within a sentence.
+
+## 6
+```{r}
+medical |>
+  unnest_tokens(word, transcription) |>
+  anti_join(stop_words, by = "word") |>
+  dplyr::filter(!is.na(medical_specialty)) |>
+  dplyr::group_by(medical_specialty, word) |>
+  dplyr::summarise(n = n(), .groups = "drop") |>
+  dplyr::group_by(medical_specialty) |>
+  top_n(5, n) |>
+  arrange(medical_specialty, desc(n))
+```
+Picking out some results from this large table: the dentistry specialty has many mentions of "tooth" and "teeth", ENT includes "nasal" and "ear", and pain management includes "needle" and "injected". These all make sense in the context of the types of cases each specialty would treat.
+
+## 7
+I would like to revisit question 4 and find common tri-grams with stop words removed.
+```{r}
+medical_grams <- medical |>
+  unnest_ngrams(ngram, transcription, n = 3) |>
+  separate(ngram, into = c("word1", "word2", "word3"), sep = " ") |>
+  anti_join(stop_words, by = c("word1" = "word")) |>
+  anti_join(stop_words, by = c("word2" = "word")) |>
+  anti_join(stop_words, by = c("word3" = "word")) |>
+  unite(ngram, word1, word2, word3, sep = " ") |>
+  dplyr::count(ngram, sort = TRUE)
+
+top20_gram <- medical_grams[1:20, ]
+
+ggplot(top20_gram, aes(x = reorder(ngram, n), y = n)) +
+  geom_col(fill = "chartreuse") +
+  coord_flip() +
+  labs(x = "Trigram", y = "Count")
+```
+Analyzing these results, we unsurpisingly see "past medical history" as the most common tri-gram. We also have common trigrams of "estimated blood loss", "usual sterile fashion", and "heart regular rate". These are common phrases in the medical field that I'm not shocked to see in this plot.
+
+
+
+
+
+
+
+
+
