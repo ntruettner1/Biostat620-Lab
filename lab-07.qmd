@@ -1,0 +1,110 @@
+---
+title: "Lab 7"
+format: html
+author: "Nate Truettner"
+embed-resources: TRUE
+---
+
+## 1. How many SARS-COV-2 papers?
+```{r}
+# Downloading the website
+website <- xml2::read_html("https://pubmed.ncbi.nlm.nih.gov/?term=sars-cov-2")
+
+# Finding the counts
+counts <- xml2::xml_find_first(website, "//div[@class='results-amount']//span[@class='value']")
+
+# Turning it into text
+counts <- as.character(counts)
+
+# Extracting the data using regex
+totalcount <- stringr::str_extract(counts, "[0-9,\\.]+")
+
+# Removing any commas/dots so that we can convert to numeric
+totalcount <- gsub('[,\\.]', '', totalcount)
+
+totalcount <- as.numeric(totalcount)
+totalcount
+```
+
+From our web scraping exercise, we see that there are 270,119 papers about SARS-CoV-2; this matches what I see on PubMed.
+
+## 2. Get article abstracts and authors
+
+```{r}
+# read in text, each line is a separate character
+abstracts <- readLines('abstract-sars-cov-2-set.txt', warn = FALSE)
+# combine all text into one character
+abstracts <- paste(abstracts, collapse = "\n") 
+# split the text whenever 3 new lines occur in a row (indicating two blank lines)
+abstracts <- strsplit(abstracts, "\n\n\n")[[1]]
+# replace any remaining "\n" symbols with spaces
+abstracts <- gsub("\n", " ", abstracts)
+# replace multiple spaces with single space
+abstracts <- gsub("\\s+", " ", abstracts)
+```
+
+## 3. Distribution of universities
+```{r}
+library(stringr)
+institution <- str_extract_all(
+  abstracts,
+  "\\b[A-Z][\\w\\s]*University(?:\\s+of\\s+[A-Z][\\w\\s]*)?|\\bUniversity\\s+of\\s+[A-Z][\\w\\s]*\\b|\\b[A-Z][\\w\\s]*Institute\\s+of\\s+[A-Z][\\w\\s]*\\b"
+)
+institution <- unlist(institution)
+
+top10 <- sort(table(institution), decreasing = TRUE)[1:10]
+print(top10)
+```
+The University of Michigan is atop the list of papers written about SARS-CoV-2 in the period 2020-2021, and their medical school is second. I think the regex could be improved to fold medical schools into their parent institution, since they operate in the same structure. We could also trim the whitespace in order to prevent two forms of one institution from appearing in the top 10. Lastly, it's possible that some schools have a comma in their name and I'm not confident that the current regex is capturing that or treating the cases as the same.
+
+## 4. Make a tidy dataset
+
+```{r}
+# read in text, each line is a separate character
+abstracts <- readLines('abstract-sars-cov-2-set.txt', warn = FALSE)
+# combine all text into one character
+abstracts <- paste(abstracts, collapse = "\n") 
+# split the text whenever 3 new lines occur in a row (indicating two blank lines)
+abstracts <- strsplit(abstracts, "\n\n\n")[[1]]
+
+journal <- str_extract(abstracts, "(?<=\\d\\.\\s)[A-Za-z][\\w\\s&:;,-]+(?=\\.\\s\\d{4})")
+
+titles <- sapply(abstracts, function(x){
+  unlist(strsplit(x, split = "\n\n"))[2]
+}, USE.NAMES = FALSE)
+
+authors <- sapply(abstracts, function(x){
+  unlist(strsplit(x, split = "\n\n"))[3]
+}, USE.NAMES = FALSE)
+
+affiliations <- str_extract(abstracts, "(?s)(?<=\n\n)Author information:.*?(?=\n\n)")
+
+journal <- trimws(journal)
+titles <- trimws(titles)
+authors <- trimws(gsub("\n", " ", authors))
+affiliations <- trimws(gsub("\n", " ", affiliations))
+
+truncate <- function(x, n = 100) {
+  ifelse(!is.na(x) & nchar(x) > n, paste0(substr(x, 1, n), "..."), x)
+}
+
+papers <- data.frame(
+  Journal      = journal,
+  Title        = titles,
+  Authors      = truncate(authors),
+  Affiliations = truncate(affiliations),
+  stringsAsFactors = FALSE
+)
+
+knitr::kable(
+  papers[1:5, ],
+  caption = "SARS-CoV-2 Papers",
+  align   = c("l", "l", "l", "l")
+)
+```
+
+
+
+
+
+
