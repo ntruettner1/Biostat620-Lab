@@ -1,0 +1,420 @@
+---
+title: "Homework 2"
+format: html
+author: "Nate Truettner"
+embed-resources: TRUE
+---
+
+## Load in data
+```{r}
+library(tidyverse)
+chs_individual <- read_csv("https://raw.githubusercontent.com/dmcable/BIOSTAT620W26/main/data/chs/chs_individual.csv")
+chs_regional <- read_csv("https://raw.githubusercontent.com/dmcable/BIOSTAT620W26/main/data/chs/chs_regional.csv")
+```
+## 1
+```{r}
+dim(chs_individual)
+dim(chs_regional)
+chs_merged <- chs_individual %>%
+  left_join(chs_regional, by = "townname")
+dim(chs_merged)
+```
+The number of rows in chs_merged and chs_individual match, so we can proceed.
+
+```{r}
+#Handle missing data
+library(DescTools)
+str(chs_merged)
+continuous_vars <- c("agepft", "height", "weight", "bmi", "fev", "fvc", "mmef",
+                     "pm25_mass", "pm25_so4", "pm25_no3", "pm25_nh4", "pm25_oc",
+                     "pm25_ec", "pm25_om", "pm10_oc", "pm10_ec", "pm10_tc",
+                     "formic", "acetic", "hcl", "hno3", "o3_max", "o3106",
+                     "o3_24", "no2", "pm10", "no_24hr", "pm2_5_fr",
+                     "iacid", "oacid", "total_acids")
+categorical_vars <- c("asthma", "active_asthma", "father_asthma", "mother_asthma",
+                      "wheeze", "hayfever", "allergy", "educ_parent", 
+                      "smoke", "pets", "gasstove", "townname", "race")
+
+chs_merged <- chs_merged %>%
+  dplyr::group_by(male, hispanic) %>%
+  mutate(
+    across(all_of(continuous_vars), ~ ifelse(is.na(.), mean(., na.rm = TRUE), .)),
+    across(all_of(categorical_vars), ~ ifelse(is.na(.), Mode(., na.rm = TRUE)[1], .))
+  ) %>%
+  ungroup()
+
+sum(is.na(chs_merged))
+head(chs_merged)
+```
+## 2
+```{r}
+chs_merged <- chs_merged %>%
+  mutate(obesity_level = case_when(bmi < 14 ~ "underweight",
+                                   bmi >= 14 & bmi < 22 ~ "normal",
+                                   bmi >= 22 & bmi < 24 ~ "overweight",
+                                   bmi >= 24 ~ "obese" ))
+chs_merged %>%
+  dplyr::group_by(obesity_level) %>%
+  dplyr::summarise(
+    min_bmi = min(bmi, na.rm = TRUE),
+    max_bmi = max(bmi, na.rm = TRUE),
+    n = n()
+  ) %>%
+  arrange(min_bmi)
+```
+## 3
+```{r}
+chs_merged <- chs_merged %>%
+  mutate(smoke_gas_exposure = case_when(
+    smoke == 0 & gasstove == 0 ~ "No exposure",
+    smoke == 1 & gasstove == 0 ~ "Smoke only",
+    smoke == 0 & gasstove == 1 ~ "Gas stove only",
+    smoke == 1 & gasstove == 1 ~ "Both"
+  ))
+
+table(chs_merged$smoke_gas_exposure)
+```
+## 4
+```{r}
+fev1_town <- chs_merged %>%
+  dplyr::group_by(townname) %>%
+  dplyr::summarise(
+    mean_fev = mean(fev, na.rm = TRUE),
+    sd_fev   = sd(fev, na.rm = TRUE),
+    n        = n()
+  ) %>%
+  arrange(desc(mean_fev))
+fev1_town
+
+fev1_sex <- chs_merged %>%
+  dplyr::group_by(male) %>%
+  dplyr::summarise(
+    mean_fev = mean(fev, na.rm = TRUE),
+    sd_fev   = sd(fev, na.rm = TRUE),
+    n        = n()
+  ) %>%
+  mutate(male = ifelse(male == 1, "Male", "Female"))
+fev1_sex
+
+fev1_obesity <- chs_merged %>%
+  dplyr::group_by(obesity_level) %>%
+  dplyr::summarise(
+    mean_fev = mean(fev, na.rm = TRUE),
+    sd_fev   = sd(fev, na.rm = TRUE),
+    n        = n()
+  ) %>%
+  arrange(desc(mean_fev))
+fev1_obesity
+
+fev1_smoke_gas <- chs_merged %>%
+  dplyr::group_by(smoke_gas_exposure) %>%
+  dplyr::summarise(
+    mean_fev = mean(fev, na.rm = TRUE),
+    sd_fev   = sd(fev, na.rm = TRUE),
+    n        = n()
+  ) %>%
+  arrange(desc(mean_fev))
+fev1_smoke_gas
+```
+Looking at the distinct cities, Alpine has the highest mean FEV1 value while Mira Loma has the lowest. On average, males have a higher FEV1 value than females, which is perhaps worth exploring. FEV1 also seems to scale with BMI, as a higher BMI is associated with a higher FEV1. Lastly, and perhaps interestingly, having neither smoke nor gas stove exposure is associated with the highest average FEV1 value.
+
+## Looking at the data (EDA)
+```{r}
+library(patchwork)
+# Checking variable types
+dim(chs_merged)
+
+chs_merged %>%
+  dplyr::select(bmi, fev, smoke_gas_exposure, pm25_mass, obesity_level) %>%
+  str()
+
+# Check for NAs
+chs_merged %>%
+  dplyr::select(bmi, fev, smoke_gas_exposure, pm25_mass, obesity_level) %>%
+  is.na() %>%
+  colSums()
+
+#no NAs remaining
+
+# Summary stats
+chs_merged %>%
+  dplyr::select(bmi, fev, pm25_mass) %>%
+  summary()
+
+table(chs_merged$obesity_level)
+table(chs_merged$smoke_gas_exposure)
+
+#nothing looks out of place
+
+# Distributions of continuous variables
+p1 <- ggplot(chs_merged, aes(x = bmi)) +
+  geom_histogram(bins = 30, fill = "steelblue", alpha = 0.8) +
+  labs(title = "Distribution of BMI", x = "BMI", y = "Count") +
+  theme_minimal()
+
+p2 <- ggplot(chs_merged, aes(x = fev)) +
+  geom_histogram(bins = 30, fill = "firebrick", alpha = 0.8) +
+  labs(title = "Distribution of FEV", x = "FEV (ml)", y = "Count") +
+  theme_minimal()
+
+p3 <- ggplot(chs_merged, aes(x = pm25_mass)) +
+  geom_histogram(bins = 30, fill = "darkgreen", alpha = 0.8) +
+  labs(title = "Distribution of PM2.5", x = "PM2.5 (µg/m³)", y = "Count") +
+  theme_minimal()
+
+vars <- p1 | p2 | p3
+vars
+
+# BMI vs. FEV
+
+# Scatterplot with regression line
+ggplot(chs_merged, aes(x = bmi, y = fev)) +
+  geom_point(alpha = 0.2, color = "steelblue") +
+  geom_smooth(method = "lm", color = "firebrick", se = TRUE) +
+  labs(
+    title = "Association Between BMI and FEV",
+    x = "BMI",
+    y = "FEV (ml)"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(axis.line = element_line(color = "black"))
+
+# Correlation
+cor(chs_merged$bmi, chs_merged$fev, use = "complete.obs")
+
+# Boxplot by obesity category
+ggplot(chs_merged, aes(x = obesity_level, y = fev, fill = obesity_level)) +
+  geom_boxplot(alpha = 0.7) +
+  stat_summary(fun = mean, geom = "point", shape = 23, size = 3,
+               fill = "white", color = "black") +
+  scale_fill_brewer(palette = "RdYlGn") +
+  scale_x_discrete(limits = c("underweight", "normal", "overweight", "obese")) +
+  labs(
+    title = "FEV by Obesity Level",
+    x = "Obesity Level",
+    y = "FEV (ml)"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(legend.position = "none",
+        axis.line = element_line(color = "black"))
+
+# Smoke/gas exposure vs. FEV
+
+ggplot(chs_merged, aes(x = smoke_gas_exposure, y = fev, fill = smoke_gas_exposure)) +
+  geom_boxplot(alpha = 0.7) +
+  stat_summary(fun = mean, geom = "point", shape = 23, size = 3,
+               fill = "white", color = "black") +
+  scale_fill_brewer(palette = "Set2") +
+  labs(
+    title = "FEV by Smoke and Gas Exposure",
+    x = "Exposure Type",
+    y = "FEV (ml)"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(legend.position = "none",
+        axis.line = element_line(color = "black"),
+        axis.text.x = element_text(angle = 15, hjust = 1))
+
+# Summary table
+chs_merged %>%
+  dplyr::group_by(smoke_gas_exposure) %>%
+  dplyr::summarise(
+    mean_fev = round(mean(fev, na.rm = TRUE), 1),
+    sd_fev   = round(sd(fev, na.rm = TRUE), 1),
+    n        = n()
+  )
+
+# PM2.5 vs FEV
+
+# Individual level
+ggplot(chs_merged, aes(x = pm25_mass, y = fev)) +
+  geom_point(alpha = 0.2, color = "steelblue") +
+  geom_smooth(method = "lm", color = "firebrick", se = TRUE) +
+  labs(
+    title = "PM2.5 vs FEV (Individual Level)",
+    x = "PM2.5 (µg/m³)",
+    y = "FEV (ml)"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(axis.line = element_line(color = "black"))
+
+# Town-level aggregation
+chs_merged %>%
+  dplyr::group_by(townname) %>%
+  dplyr::summarise(
+    mean_pm25 = mean(pm25_mass, na.rm = TRUE),
+    mean_fev  = mean(fev, na.rm = TRUE)
+  ) %>%
+  ggplot(aes(x = mean_pm25, y = mean_fev, label = townname)) +
+  geom_point(color = "steelblue", size = 3) +
+  geom_text(vjust = -0.7, size = 3) +
+  geom_smooth(method = "lm", color = "firebrick", se = TRUE) +
+  labs(
+    title = "Town-Level Mean PM2.5 vs Mean FEV",
+    x = "Mean PM2.5 (µg/m³)",
+    y = "Mean FEV (ml)"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(axis.line = element_line(color = "black"))
+
+# Correlation at town level
+chs_merged %>%
+  dplyr::group_by(townname) %>%
+  dplyr::summarise(
+    mean_pm25 = mean(pm25_mass, na.rm = TRUE),
+    mean_fev  = mean(fev, na.rm = TRUE)
+  ) %>%
+  summarise(cor = cor(mean_pm25, mean_fev))
+```
+
+An increase in BMI appears to be associated with an increase in FEV. From the boxplot, it does not appear that FEV varies greatly across levels of smoke/gas exposure. Assessing the scatterplot of FEV vs PM2.5 at the town-level, it seems like a higher PM2.5 exposure is associated with lower FEV.
+
+
+## Visualizations
+```{r}
+library(ggplot2)
+library(leaflet)
+
+#Facet plot
+ggplot(chs_merged, aes(x = bmi, y = fev)) +
+  geom_point(alpha = 0.3, size = 0.8, color = "steelblue") +
+  geom_smooth(method = "lm", color = "firebrick", se = TRUE) +
+  facet_wrap(~ townname, ncol = 4) +
+  labs(
+    title = "BMI vs FEV by Town",
+    x = "BMI",
+    y = "FEV (mL)"
+  ) +
+  theme_minimal(base_size = 11) +
+  theme(axis.line = element_line(color = "black"))
+
+#Stacked histogram: FEV by BMI category
+ggplot(chs_merged, aes(x = fev, fill = obesity_level)) +
+  geom_histogram(bins = 30, position = "stack", alpha = 0.8) +
+  scale_fill_brewer(palette = "RdYlGn") +
+  labs(
+    title = "Distribution of FEV by BMI Category",
+    x = "FEV (ml)",
+    y = "Count",
+    fill = "BMI Category"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(axis.line = element_line(color = "black"))
+
+#Stacked histogram: FEV by smoke/gas exposure
+ggplot(chs_merged, aes(x = fev, fill = smoke_gas_exposure)) +
+  geom_histogram(bins = 30, position = "stack", alpha = 0.8) +
+  scale_fill_brewer(palette = "Set1") +
+  labs(
+    title = "Distribution of FEV by Smoke/Gas Exposure",
+    x = "FEV (ml)",
+    y = "Count",
+    fill = "Exposure"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(axis.line = element_line(color = "black"))
+
+#Bar chart of BMI by smoke/gas exposure
+ggplot(chs_merged, aes(x = smoke_gas_exposure, fill = obesity_level)) +
+  geom_bar(position = "dodge") +
+  scale_fill_brewer(palette = "RdYlGn") +
+  labs(
+    title = "BMI Category by Smoke/Gas Exposure",
+    x = "Smoke/Gas Exposure",
+    y = "Count",
+    fill = "BMI Category"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    axis.line = element_line(color = "black"),
+    axis.text.x = element_text(angle = 15, hjust = 1)
+  )
+
+#Statistical summary graphs of FEV by BMI and FEV by smoke/gas exposure category
+ggplot(chs_merged, aes(x = obesity_level, y = fev, fill = obesity_level)) +
+  geom_boxplot(alpha = 0.7, outlier.alpha = 0.3) +
+  stat_summary(fun = mean, geom = "point", shape = 23, size = 3,
+               fill = "white", color = "black") +
+  scale_fill_brewer(palette = "RdYlGn") +
+  labs(
+    title = "FEV by BMI Category",
+    x = "BMI Category",
+    y = "FEV (ml)",
+    fill = ""
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(legend.position = "none",
+        axis.line = element_line(color = "black"))
+
+ggplot(chs_merged, aes(x = smoke_gas_exposure, y = fev, fill = smoke_gas_exposure)) +
+  geom_boxplot(alpha = 0.7, outlier.alpha = 0.3) +
+  stat_summary(fun = mean, geom = "point", shape = 23, size = 3,
+               fill = "white", color = "black") +
+  scale_fill_brewer(palette = "Set1") +
+  labs(
+    title = "FEV by Smoke/Gas Exposure",
+    x = "Exposure",
+    y = "FEV (ml)",
+    fill = ""
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(legend.position = "none",
+        axis.line = element_line(color = "black"),
+        axis.text.x = element_text(angle = 15, hjust = 1))
+
+#A leaflet map showing the concentrations of PM2.5 mass in each of the CHS communities
+pm25_towns <- chs_merged %>%
+  dplyr::group_by(townname) %>%
+  dplyr::summarise(
+    pm25  = mean(pm25_mass, na.rm = TRUE),
+    lat   = mean(lat, na.rm = TRUE),
+    lon   = mean(lon, na.rm = TRUE)
+  )
+
+pal <- colorNumeric(palette = "YlOrRd", domain = pm25_towns$pm25)
+
+leaflet(pm25_towns) %>%
+  addTiles() %>%
+  addCircleMarkers(
+    lng    = ~lon,
+    lat    = ~lat,
+    radius = ~pm25 / 2,
+    color  = ~pal(pm25),
+    fillOpacity = 0.8,
+    label  = ~paste0(townname, ": ", round(pm25, 1), " µg/m³")
+  ) %>%
+  addLegend(
+    position = "bottomright",
+    pal      = pal,
+    values   = ~pm25,
+    title    = "PM2.5 (µg/m³)"
+  )
+
+# Is PM2.5 associated with FEV?
+chs_merged %>%
+  dplyr::group_by(townname) %>%
+  dplyr::summarise(
+    mean_pm25 = mean(pm25_mass, na.rm = TRUE),
+    mean_fev  = mean(fev, na.rm = TRUE)
+  ) %>%
+  ggplot(aes(x = mean_pm25, y = mean_fev, label = townname)) +
+  geom_point(color = "steelblue", size = 3) +
+  geom_text(vjust = -0.7, size = 3) +
+  geom_smooth(method = "lm", color = "firebrick", se = TRUE) +
+  labs(
+    title = "Town-Level PM2.5 vs Mean FEV",
+    x     = "Mean PM2.5 (µg/m³)",
+    y     = "Mean FEV (ml)"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(axis.line = element_line(color = "black"))
+```
+From our final visualization, it appears that a higher PM2.5 value is associated with a lower FEV, indicating that PM2.5 exposure is a risk factor for poor lung function.
+
+
+
+
+
+
+
+
