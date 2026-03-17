@@ -1,0 +1,153 @@
+---
+title: "Lab 8"
+author: "Nate Truettner"
+format: html
+---
+
+## Problem 1: Vectorization
+
+### 1
+```{r}
+fun1 <- function(n = 100, k = 4, lambda = 4) {
+  x <- NULL
+  
+  for (i in 1:n){
+    x <- rbind(x, rpois(k, lambda))    
+  }
+  
+  return(x)
+}
+
+fun1alt <- function(n = 100, k = 4, lambda = 4) {
+  matrix(rpois(n * k, lambda), nrow = n, ncol = k)
+}
+
+set.seed(2)
+res1 <- fun1()
+res2 <- fun1alt()
+
+dim(res1)
+dim(res2)
+
+summary(as.vector(res1))
+summary(as.vector(res2))
+```
+We notice that the two functions produce very similar results with regards to dimensions and distribution.
+
+
+```{r}
+#Benchmarking
+library(microbenchmark)
+microbenchmark(
+  fun1(),
+  fun1alt(),
+  times = 100
+)
+```
+Our alternate function takes less than 10% of the time it takes for the original function to run, so we are confident we have optimized this process well.
+
+### 2
+```{r}
+# Data Generating Process (10 x 10,000 matrix)
+set.seed(1234)
+x <- matrix(rnorm(1e4), nrow=10)
+
+# Find each column's max value
+fun2 <- function(x) {
+  apply(x, 2, max)
+}
+
+fun2alt <- function(x) {
+  x[cbind(max.col(t(x)), seq_len(ncol(x)))]
+}
+
+#Check if values are equal
+all.equal(fun2(x), fun2alt(x))
+```
+```{r}
+#Benchmarking
+microbenchmark(
+  fun2(x),
+  fun2alt(x),
+  times = 100
+)
+```
+On average, the alternate function is about 6 times faster than the original function.
+
+## Problem 2: Parallelization
+```{r}
+my_boot <- function(dat, stat, R, ncpus = 1L) {
+  
+  n <- nrow(dat)
+  idx <- matrix(sample.int(n, n*R, TRUE), nrow=n, ncol=R)
+  
+  if (ncpus > 1L) {
+    cl <- makeCluster(ncpus)
+    on.exit(stopCluster(cl))
+    clusterExport(cl, varlist = deparse(substitute(stat)), envir = parent.frame())
+    ans <- parLapply(cl, seq_len(R), function(i) {
+      stat(dat[idx[,i], , drop=FALSE])
+    })
+  } else {
+    ans <- lapply(seq_len(R), function(i) {
+      stat(dat[idx[,i], , drop=FALSE])
+    })
+  }
+  
+  ans <- do.call(rbind, ans)
+  return(ans)
+}
+```
+
+```{r}
+library(parallel)
+
+my_stat <- function(d) coef(lm(y ~ x, data=d))
+
+set.seed(1)
+n <- 500; R <- 1e4
+x <- cbind(rnorm(n)); y <- x*5 + rnorm(n)
+
+ans0 <- confint(lm(y ~ x))
+ans1 <- my_boot(dat = data.frame(x, y), my_stat, R = R, ncpus = 2L)
+
+t(apply(ans1, 2, quantile, c(.025, .975)))
+##                   2.5%      97.5%
+## (Intercept) -0.1372435 0.05074397
+## x            4.8680977 5.04539763
+
+# Parametric 95% CIs
+ans0
+##                  2.5 %     97.5 %
+## (Intercept) -0.1379033 0.04797344
+## x            4.8650100 5.04883353
+```
+It seems like my answers line up pretty well with the provided comments.
+```{r}
+dat <- data.frame(x, y)
+
+# No parallel
+time_1core <- system.time(
+  my_boot(dat = dat, stat = my_stat, R = R, ncpus = 1L)
+)
+
+# 2 cores
+time_2core <- system.time(
+  my_boot(dat = dat, stat = my_stat, R = R, ncpus = 2L)
+)
+
+# 4 cores
+time_4core <- system.time(
+  my_boot(dat = dat, stat = my_stat, R = R, ncpus = 4L)
+)
+
+time_1core
+time_2core
+time_4core
+```
+As we see in the timer results, the result from the non-parallel process is by far the longest, about 50 times longer than the processes run in parallel (2 and 4 cores). This shows the importance of parallelization.
+
+## Problem 3. Short Answer
+
+1. A job is ideal for parallelization if we are performing the same computation many times; this allows us to run the jobs simultaneously and reduce the total run time of the code. Jobs that can be parallelized should not require communication with other results, they should be run independently. \n
+2. Vectorization refers to the process of running operations on a vector (which is faster in R) rather than running an operation one element at a time. This drastically cuts down on run time. Parallelization, as mentioned before, refers to running the same computationally intensive task in parallel across many cores to decrease run time. Vectorization should be done within a task while parallelization should be done if you want to perform that task many times.
