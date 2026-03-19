@@ -1,0 +1,159 @@
+---
+title: "Lab 9: SQL"
+author: "Nate Truettner"
+format: html
+---
+
+```{r}
+#install.packages(c("RSQLite", "DBI"))
+
+library(RSQLite)
+library(DBI)
+
+# Initialize a temporary in memory database
+con <- dbConnect(SQLite(), ":memory:")
+
+# Download tables
+doctor <- read.csv("https://raw.githubusercontent.com/dmcable/BIOSTAT620W26/main/data/hospital/doctor.csv")
+visit <- read.csv("https://raw.githubusercontent.com/dmcable/BIOSTAT620W26/main/data/hospital/visit.csv")
+patient <- read.csv("https://raw.githubusercontent.com/dmcable/BIOSTAT620W26/main/data/hospital/patient.csv")
+payment <- read.csv("https://raw.githubusercontent.com/dmcable/BIOSTAT620W26/main/data/hospital/payment.csv")
+
+# Copy data.frames to database
+dbWriteTable(con, "doctor", doctor)
+dbWriteTable(con, "visit", visit)
+dbWriteTable(con, "patient", patient)
+dbWriteTable(con, "payment", payment)
+
+dbListTables(con)
+
+```
+### Exercise 1
+```{sql connection=con}
+SELECT doctor_id, first_name, last_name
+FROM doctor
+ORDER by last_name, first_name
+```
+### Exercise 2
+```{sql connection=con}
+SELECT doctor_id, first_name, last_name
+FROM doctor 
+WHERE last_name IN ('WILLIAMS', 'DAVIS')
+```
+### Exercise 3
+```{sql connection=con}
+SELECT DISTINCT patient_id
+FROM visit
+WHERE date(visit_start_date) = '2005-07-05'
+```
+
+### Exercise 4
+#### Exercise 4.1
+```{sql connection=con}
+SELECT *
+FROM payment
+WHERE amount IN (199, 799, 999)
+```
+#### Exercise 4.2
+```{sql connection=con}
+SELECT *
+FROM payment
+WHERE amount > 500
+```
+#### Exercise 4.3
+```{sql connection=con}
+SELECT *
+FROM payment
+WHERE amount > 500 AND amount < 800
+```
+### Exercise 5
+```{sql connection=con}
+SELECT payment.payment_id, payment.amount
+FROM payment
+  INNER JOIN patient ON patient.patient_id = payment.patient_id
+WHERE patient.last_name == "DAVIS"
+```
+### Exercise 6
+#### Exercise 6.1
+```{sql connection=con}
+SELECT COUNT(*) AS "Total Number of Visits"
+FROM visit
+```
+#### Exercise 6.2
+```{sql connection=con}
+SELECT patient_id AS "Patient ID", COUNT(visit_id) AS "Number of Visits"
+FROM visit
+GROUP BY patient_id
+```
+#### Exercise 6.3
+```{sql connection=con}
+SELECT patient_id AS "Patient ID", COUNT(visit_id) AS "Number of Visits"
+FROM visit
+GROUP BY patient_id
+ORDER BY COUNT(visit_id) DESC
+```
+#### Exercise 6.4
+```{sql connection=con}
+SELECT patient_id AS "Patient ID", COUNT(visit_id) AS "Number of Visits"
+FROM visit
+GROUP BY patient_id
+HAVING count(visit_id) >= 40
+ORDER BY COUNT(visit_id) DESC
+```
+### Exercise 7
+```{sql connection=con}
+SELECT MAX(amount) AS "Maximum Payment", MIN(amount) AS "Minimum Payment", AVG(amount) AS "Average Payment", SUM(amount) AS "Total Sum of Payments"
+FROM payment
+```
+
+#### Exercise 7.1
+```{sql connection=con}
+SELECT patient_id AS "Patient ID", MAX(amount) AS "Maximum Payment", MIN(amount) AS "Minimum Payment", AVG(amount) AS "Average Payment", SUM(amount) AS "Total Sum of Payments"
+FROM payment
+GROUP BY patient_id
+```
+#### Exercise 7.2
+```{sql connection=con}
+SELECT patient_id AS "Patient ID", MAX(amount) AS "Maximum Payment", MIN(amount) AS "Minimum Payment", AVG(amount) AS "Average Payment", SUM(amount) AS "Total Sum of Payments"
+FROM payment
+GROUP BY patient_id
+HAVING COUNT(payment_id) > 5
+```
+### Exercise 8
+#### Exercise 8.1
+```{sql connection=con}
+SELECT doctor.doctor_id, doctor.first_name, doctor.last_name, AVG(julianday(visit.visit_end_date) - julianday(visit.visit_start_date)) AS "Average Visit Length"
+FROM doctor
+INNER JOIN visit
+    ON doctor.doctor_id = visit.doctor_id
+GROUP BY doctor.doctor_id, doctor.first_name, doctor.last_name
+```
+#### Exercise 8.2
+```{sql connection=con}
+SELECT doctor.doctor_id, doctor.first_name, doctor.last_name, AVG(julianday(visit.visit_end_date) - julianday(visit.visit_start_date)) AS "Average Visit Length"
+FROM doctor
+INNER JOIN visit
+    ON doctor.doctor_id = visit.doctor_id
+GROUP BY doctor.doctor_id, doctor.first_name, doctor.last_name
+ORDER BY "Average Visit Length" DESC
+LIMIT 5
+```
+The doctors with the 5 longest average visit lengths are Ben Harris, Tom Cruise, Natalie Hopkins, Elvis Marx, and Liza Bergman.
+
+```{sql connection=con}
+SELECT doctor.doctor_id, doctor.first_name, doctor.last_name, AVG(julianday(visit.visit_end_date) - julianday(visit.visit_start_date)) AS "Average Visit Length"
+FROM doctor
+INNER JOIN visit
+    ON doctor.doctor_id = visit.doctor_id
+GROUP BY doctor.doctor_id, doctor.first_name, doctor.last_name
+ORDER BY "Average Visit Length" ASC
+LIMIT 5
+```
+
+The doctors with the 5 shortest average visit lengths are Ellen Presley,  Debbie  Akroyd, Christian Gable, Vivien Bergen, and Renee Ball.
+
+### Cleanup
+```{r}
+dbDisconnect(con)
+```
+
