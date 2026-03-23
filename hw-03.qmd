@@ -1,0 +1,174 @@
+---
+title: "Assignment 3 - Text Mining"
+author: "Nate Truettner"
+format: html
+embed-resources: TRUE
+---
+
+## Text Mining
+
+```{r}
+library(readr)
+library(dplyr)
+library(tidytext)
+library(ggplot2)
+library(tidyr)
+pubmed <- read.csv('pubmed.csv')
+```
+
+### Question 1
+```{r}
+table(pubmed$term)
+```
+There are 981 abstracts associated with "covid", 376 associated with "cystic fibrosis", 317 associated with "meningitis", 780 associated with "preeclampsia", and 787 associated with "prostate cancer". 
+```{r}
+tokens <- pubmed %>%
+  unnest_tokens(word, abstract)
+token_counts <- tokens %>%
+  dplyr::count(term, word, sort = TRUE)
+top5 <- token_counts %>%
+  group_by(term) %>%
+  slice_max(n, n = 5)
+top5
+```
+-The 5 most common tokens for "covid" are (the, of, covid, 19, and)  
+-The 5 most common tokens for "cystic fibrosis" are (the, of, and, in, to)  
+-The 5 most common tokens for "meningitis" are (the, of, and, in, a)  
+-The 5 most common tokens for "preeclampsia" are (the, of, and, in, to)  
+-The 5 most common tokens for "prostate cancer" are (the, of, and, cancer, prostate)  
+There is not a lot interesting to take away here; these are mostly stop words and do not give any insight into the contents of the abstracts, save for a few obviously related words like "prostate" and "cancer".
+
+### Question 2
+```{r}
+data("stop_words")
+
+tokens_clean <- tokens %>%
+  anti_join(stop_words, by = "word")
+
+top5_updated <- tokens_clean %>%
+  dplyr::count(term, word, sort = TRUE) %>%
+  group_by(term) %>%
+  slice_max(n, n = 5)
+
+top5_updated
+```
+After removing the stop words:  
+-The 5 most common tokens for "covid" are (covid, 19, patients, disease, pandemic)    
+-The 5 most common tokens for "cystic fibrosis" are (fibrosis, cystic, cf, patients, disease)    
+-The 5 most common tokens for "meningitis" are (patients, meningitis, meningeal, csf, clinical)    
+-The 5 most common tokens for "preeclampsia" are (pre, eclampsia, preeclampsia, women, pregnancy)    
+-The 5 most common tokens for "prostate cancer" are (cancer, prostate, patients, treatment, disease)  
+This is a bit more interesting than the previous analysis. I notice that "women" and "pregnancy" are common tokens for the preeclampsia search term; these are some of the few words that would not be totally obvious as top 5 abstract tokens when looking at the search term. "Treatment" is also interesting for the prostate cancer search term, as that would indicate that many studies are focused on treating the disease or involve treatment in some fashion.
+
+### Question 3
+```{r}
+bigrams <- pubmed %>%
+  unnest_tokens(bigram, abstract, token = "ngrams", n = 2)
+bigrams_sep <- bigrams %>%
+  separate(bigram, into = c("word1", "word2"), sep = " ")
+bigrams_filtered <- bigrams_sep %>%
+  dplyr::filter(!word1 %in% stop_words$word,
+         !word2 %in% stop_words$word)
+bigram_counts <- bigrams_filtered %>%
+  unite(bigram, word1, word2, sep = " ") %>%
+  dplyr::count(bigram, sort = TRUE)
+top10_bigrams <- bigram_counts %>%
+  slice_max(n, n = 10)
+
+top10_bigrams
+```
+```{r}
+ggplot(top10_bigrams, aes(x = reorder(bigram, n), y = n)) +
+  geom_col(fill="green") +
+  coord_flip() +
+  labs(title = "Top 10 Bigrams",
+       x = "Bigram",
+       y = "Count")
+```
+I decided to remove stop words to get some better insights into the data. Interestingly, "covid 19" is far and away the most common bigram in these abstracts.
+
+### Question 4
+```{r}
+tfidf <- tokens_clean %>%
+  dplyr::count(term, word, sort = TRUE) %>%
+  bind_tf_idf(word, term, n)
+top_tfidf <- tfidf %>%
+  group_by(term) %>%
+  slice_max(tf_idf, n = 5)
+
+top_tfidf
+```
+- The 5 highest TF-IDF scores for "covid" are (covid, pandemic, coronavirus, sars, cov)  
+- The 5 highest TF-IDF scores for "cystic fibrosis" are (cf, fibrosis, cystic, cftr, sweat)  
+- The 5 highest TF-IDF scores for "meningitis" are (meningitis, meningeal, pachymeningitis, csf, meninges)  
+- The 5 highest TF-IDF scores for "preeclampsia" are (eclampsia, preeclampsia, pregnancy, maternal, gestational)  
+- The 5 highest TF-IDF scores for "prostate cancer" are (prostate, androgen, psa, prostatectomy, castration)  
+We notice some slight differences from our Question 2 results (since this was the one that removed the stop words). Particularly for prostate cancer, we see some big changes: the TF-IDF analysis shows more specific and descriptive words rather than words that broadly describe prostate cancer. I also thought it was interesting that "sweat" appeared for cystic fibrosis; I'm not sure why that would be included in the top 5 results but it would be interesting to look into. Generally, we get more specific and not see these very broad terms as we look at the TF-IDF analysis compared to the initial analysis.
+
+## Sentiment Analysis
+### Question 5
+
+```{r}
+library(textdata)
+nrc <- tidytext::get_sentiments("nrc")
+tokens_nrc <- tokens %>%
+  inner_join(nrc, by = c("word" = "word"))
+sentiment_counts <- tokens_nrc %>%
+  count(term, sentiment, sort = TRUE)
+top_sentiment <- sentiment_counts %>%
+  group_by(term) %>%
+  slice_max(n, n = 1)
+
+top_sentiment
+```
+We see that the search terms "covid", "cystic fibrosis", and "preeclampsia" are associated with positive sentiment while "meningitis" and "prostate cancer" are associated with negative sentiment. This is kind of surprising to me that any of these diseases could be associated with positive sentiment, unless it's in regard to some kind of treatment.
+```{r}
+tokens_nrc_filtered <- tokens_nrc %>%
+  filter(!sentiment %in% c("positive", "negative"))
+
+sentiment_counts_filtered <- tokens_nrc_filtered %>%
+  count(term, sentiment, sort = TRUE)
+
+top_sentiment_filtered <- sentiment_counts_filtered %>%
+  group_by(term) %>%
+  slice_max(n, n = 1)
+
+top_sentiment_filtered
+```
+When we remove "positive" and "negative" sentiments, we get results that are more in line with my expectations. COVID, meningitis, and prostate cancer are associated with fear, which makes sense, and disgust and anticipation are understandable sentiments for these diseases.
+
+### Question 6
+```{r}
+pubmed_indexed <- pubmed %>%
+  mutate(abstract_id = row_number())
+
+tokens_afinn <- pubmed_indexed %>%
+  unnest_tokens(word, abstract)
+
+afinn <- tidytext::get_sentiments("afinn")
+
+tokens_afinn <- tokens_afinn %>%
+  inner_join(afinn, by = "word")
+
+abstract_sentiment <- tokens_afinn %>%
+  group_by(abstract_id, term) %>%
+  summarize(avg_score = mean(value), .groups = "drop")
+
+ggplot(abstract_sentiment, aes(x = term, y = avg_score, fill = term)) +
+  geom_boxplot() +
+  labs(
+    title = "Average AFINN Sentiment Score per Abstract",
+    x = "Search Term",
+    y = "Average Sentiment Score"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+Examining the boxplots, we see that cystic fibrosis generally has more positive sentiment than the other diseases. Other than that, the diseases are pretty similar in regards to sentiment, but prostate cancer does seem to have the most negative sentiment, which makes sense given its severity.
+
+
+
+
+
+
+
