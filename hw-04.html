@@ -1,0 +1,2254 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.8.25">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Nate Truettner">
+
+<title>Assignment 4 - HPC, SQL, and interactive plots</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="hw-04_files/libs/clipboard/clipboard.min.js"></script>
+<script src="hw-04_files/libs/quarto-html/quarto.js" type="module"></script>
+<script src="hw-04_files/libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="hw-04_files/libs/quarto-html/axe/axe-check.js" type="module"></script>
+<script src="hw-04_files/libs/quarto-html/popper.min.js"></script>
+<script src="hw-04_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="hw-04_files/libs/quarto-html/anchor.min.js"></script>
+<link href="hw-04_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="hw-04_files/libs/quarto-html/quarto-syntax-highlighting-7b89279ff1a6dce999919e0e67d4d9ec.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="hw-04_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="hw-04_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="hw-04_files/libs/bootstrap/bootstrap-d6a003b94517c951b2d65075d42fb01b.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="hw-04_files/libs/htmltools-fill-0.5.8.1/fill.css" rel="stylesheet">
+<script src="hw-04_files/libs/htmlwidgets-1.6.4/htmlwidgets.js"></script>
+<script src="hw-04_files/libs/plotly-binding-4.12.0/plotly.js"></script>
+<script src="hw-04_files/libs/typedarray-0.1/typedarray.min.js"></script>
+<script src="hw-04_files/libs/jquery-3.5.1/jquery.min.js"></script>
+<link href="hw-04_files/libs/crosstalk-1.2.2/css/crosstalk.min.css" rel="stylesheet">
+<script src="hw-04_files/libs/crosstalk-1.2.2/js/crosstalk.min.js"></script>
+<link href="hw-04_files/libs/plotly-htmlwidgets-css-2.25.2/plotly-htmlwidgets.css" rel="stylesheet">
+<script src="hw-04_files/libs/plotly-main-2.25.2/plotly-latest.min.js"></script>
+
+
+</head>
+
+<body class="fullcontent quarto-light">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Assignment 4 - HPC, SQL, and interactive plots</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Nate Truettner </p>
+          </div>
+  </div>
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(microbenchmark)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ggplot2)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(plotly)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>
+Attaching package: 'plotly'</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>The following object is masked from 'package:ggplot2':
+
+    last_plot</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>The following object is masked from 'package:stats':
+
+    filter</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>The following object is masked from 'package:graphics':
+
+    layout</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(dplyr)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>
+Attaching package: 'dplyr'</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>The following objects are masked from 'package:stats':
+
+    filter, lag</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>The following objects are masked from 'package:base':
+
+    intersect, setdiff, setequal, union</code></pre>
+</div>
+</div>
+<section id="question-1" class="level2">
+<h2 class="anchored" data-anchor-id="question-1">Question 1</h2>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="co"># running cumulative sum by row</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>fun2 <span class="ot">&lt;-</span> <span class="cf">function</span>(mat) {</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>  n <span class="ot">&lt;-</span> <span class="fu">nrow</span>(mat)</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>  k <span class="ot">&lt;-</span> <span class="fu">ncol</span>(mat)</span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>  ans <span class="ot">&lt;-</span> mat</span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span>n) {</span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> (j <span class="cf">in</span> <span class="dv">2</span><span class="sc">:</span>k) {</span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>      ans[i,j] <span class="ot">&lt;-</span> mat[i, j] <span class="sc">+</span> ans[i, j <span class="sc">-</span> <span class="dv">1</span>]</span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a>  ans</span>
+<span id="cb10-12"><a href="#cb10-12" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb10-13"><a href="#cb10-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-14"><a href="#cb10-14" aria-hidden="true" tabindex="-1"></a>fun2alt <span class="ot">&lt;-</span> <span class="cf">function</span>(mat) {</span>
+<span id="cb10-15"><a href="#cb10-15" aria-hidden="true" tabindex="-1"></a>  ans <span class="ot">&lt;-</span> mat</span>
+<span id="cb10-16"><a href="#cb10-16" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (j <span class="cf">in</span> <span class="dv">2</span><span class="sc">:</span><span class="fu">ncol</span>(mat)) {</span>
+<span id="cb10-17"><a href="#cb10-17" aria-hidden="true" tabindex="-1"></a>    ans[, j] <span class="ot">&lt;-</span> ans[, j] <span class="sc">+</span> ans[, j <span class="sc">-</span> <span class="dv">1</span>]</span>
+<span id="cb10-18"><a href="#cb10-18" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb10-19"><a href="#cb10-19" aria-hidden="true" tabindex="-1"></a>  ans</span>
+<span id="cb10-20"><a href="#cb10-20" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Use the functions with this data</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">2315</span>)</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>dat <span class="ot">&lt;-</span> <span class="fu">matrix</span>(<span class="fu">rnorm</span>(<span class="dv">200</span> <span class="sc">*</span> <span class="dv">100</span>), <span class="at">nrow =</span> <span class="dv">200</span>)</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a><span class="fu">identical</span>(<span class="fu">fun2</span>(dat), <span class="fu">fun2alt</span>(dat)) </span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] TRUE</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>mb <span class="ot">&lt;-</span> <span class="fu">microbenchmark</span>(</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">original   =</span> <span class="fu">fun2</span>(dat),</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">updated =</span> <span class="fu">fun2alt</span>(dat),</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">times =</span> <span class="dv">100</span>L</span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>mb</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Unit: microseconds
+     expr      min        lq      mean   median        uq       max neval cld
+ original 3454.447 3564.0525 3668.8261 3593.461 3649.9280  8629.022   100  a 
+  updated  464.195  712.2905  991.1158  924.394  978.3885 15845.308   100   b</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="fu">autoplot</span>(mb) <span class="sc">+</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">"fun2 vs fun2alt runtime"</span>, <span class="at">x =</span> <span class="st">"Time (µs)"</span>) <span class="sc">+</span></span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: `aes_string()` was deprecated in ggplot2 3.0.0.
+ℹ Please use tidy evaluation idioms with `aes()`.
+ℹ See also `vignette("ggplot2-in-packages")` for more information.
+ℹ The deprecated feature was likely used in the microbenchmark package.
+  Please report the issue at
+  &lt;https://github.com/joshuaulrich/microbenchmark/issues/&gt;.</code></pre>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="hw-04_files/figure-html/unnamed-chunk-3-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>As shown in the plot, we notice that the updated function takes significantly less time to run than the original function. By cutting down to only one for loop, we greatly enhance the efficiency of the process.</p>
+</section>
+<section id="question-2" class="level2">
+<h2 class="anchored" data-anchor-id="question-2">Question 2</h2>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>fun3 <span class="ot">&lt;-</span> <span class="cf">function</span>(x) {</span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>  out <span class="ot">&lt;-</span> <span class="fu">numeric</span>(<span class="fu">length</span>(x))</span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>  cumsum_x <span class="ot">&lt;-</span> <span class="dv">0</span></span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (i <span class="cf">in</span> <span class="fu">seq_along</span>(x)) {</span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> (x[i] <span class="sc">==</span> <span class="dv">0</span>) {</span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a>      cumsum_x <span class="ot">&lt;-</span> <span class="dv">0</span></span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a>    } <span class="cf">else</span> {</span>
+<span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a>      cumsum_x <span class="ot">&lt;-</span> cumsum_x <span class="sc">+</span> x[i] </span>
+<span id="cb17-9"><a href="#cb17-9" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb17-10"><a href="#cb17-10" aria-hidden="true" tabindex="-1"></a>    out[i] <span class="ot">&lt;-</span> cumsum_x</span>
+<span id="cb17-11"><a href="#cb17-11" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb17-12"><a href="#cb17-12" aria-hidden="true" tabindex="-1"></a>  out</span>
+<span id="cb17-13"><a href="#cb17-13" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb17-14"><a href="#cb17-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-15"><a href="#cb17-15" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(Rcpp)</span>
+<span id="cb17-16"><a href="#cb17-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-17"><a href="#cb17-17" aria-hidden="true" tabindex="-1"></a><span class="fu">cppFunction</span>(<span class="st">'</span></span>
+<span id="cb17-18"><a href="#cb17-18" aria-hidden="true" tabindex="-1"></a><span class="st">NumericVector fast_fun3_cpp(NumericVector x) {</span></span>
+<span id="cb17-19"><a href="#cb17-19" aria-hidden="true" tabindex="-1"></a><span class="st">  int n = x.size();</span></span>
+<span id="cb17-20"><a href="#cb17-20" aria-hidden="true" tabindex="-1"></a><span class="st">  NumericVector out(n);</span></span>
+<span id="cb17-21"><a href="#cb17-21" aria-hidden="true" tabindex="-1"></a><span class="st">  </span></span>
+<span id="cb17-22"><a href="#cb17-22" aria-hidden="true" tabindex="-1"></a><span class="st">  double cs = 0.0;</span></span>
+<span id="cb17-23"><a href="#cb17-23" aria-hidden="true" tabindex="-1"></a><span class="st">  </span></span>
+<span id="cb17-24"><a href="#cb17-24" aria-hidden="true" tabindex="-1"></a><span class="st">  for (int i = 0; i &lt; n; i++) {</span></span>
+<span id="cb17-25"><a href="#cb17-25" aria-hidden="true" tabindex="-1"></a><span class="st">    if (x[i] == 0) {</span></span>
+<span id="cb17-26"><a href="#cb17-26" aria-hidden="true" tabindex="-1"></a><span class="st">      cs = 0.0;</span></span>
+<span id="cb17-27"><a href="#cb17-27" aria-hidden="true" tabindex="-1"></a><span class="st">    } else {</span></span>
+<span id="cb17-28"><a href="#cb17-28" aria-hidden="true" tabindex="-1"></a><span class="st">      cs += x[i];</span></span>
+<span id="cb17-29"><a href="#cb17-29" aria-hidden="true" tabindex="-1"></a><span class="st">    }</span></span>
+<span id="cb17-30"><a href="#cb17-30" aria-hidden="true" tabindex="-1"></a><span class="st">    out[i] = cs;</span></span>
+<span id="cb17-31"><a href="#cb17-31" aria-hidden="true" tabindex="-1"></a><span class="st">  }</span></span>
+<span id="cb17-32"><a href="#cb17-32" aria-hidden="true" tabindex="-1"></a><span class="st">  </span></span>
+<span id="cb17-33"><a href="#cb17-33" aria-hidden="true" tabindex="-1"></a><span class="st">  return out;</span></span>
+<span id="cb17-34"><a href="#cb17-34" aria-hidden="true" tabindex="-1"></a><span class="st">}</span></span>
+<span id="cb17-35"><a href="#cb17-35" aria-hidden="true" tabindex="-1"></a><span class="st">'</span>)</span>
+<span id="cb17-36"><a href="#cb17-36" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">123</span>)</span>
+<span id="cb17-37"><a href="#cb17-37" aria-hidden="true" tabindex="-1"></a>x <span class="ot">&lt;-</span> <span class="fu">sample</span>(<span class="fu">c</span>(<span class="dv">0</span><span class="sc">:</span><span class="dv">3</span>), <span class="fl">1e6</span>, <span class="at">replace =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb17-38"><a href="#cb17-38" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-39"><a href="#cb17-39" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-40"><a href="#cb17-40" aria-hidden="true" tabindex="-1"></a>mb <span class="ot">&lt;-</span> <span class="fu">microbenchmark</span>(</span>
+<span id="cb17-41"><a href="#cb17-41" aria-hidden="true" tabindex="-1"></a>  <span class="at">original =</span> <span class="fu">fun3</span>(x),</span>
+<span id="cb17-42"><a href="#cb17-42" aria-hidden="true" tabindex="-1"></a>  <span class="at">cpp      =</span> <span class="fu">fast_fun3_cpp</span>(x),</span>
+<span id="cb17-43"><a href="#cb17-43" aria-hidden="true" tabindex="-1"></a>  <span class="at">times =</span> <span class="dv">50</span></span>
+<span id="cb17-44"><a href="#cb17-44" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb17-45"><a href="#cb17-45" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(mb)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Unit: milliseconds
+     expr       min        lq     mean   median        uq      max neval cld
+ original 136.02510 137.05383 139.2749 137.6287 142.03633 149.7611    50  a 
+      cpp  10.02958  10.71493  18.2138  14.8584  17.28654 170.5160    50   b</code></pre>
+</div>
+</div>
+<p>I tried many different implementations only using R, so I looked up how to use Rcpp to speed up the process and found that it significantly sped up the function.</p>
+</section>
+<section id="question-3" class="level2">
+<h2 class="anchored" data-anchor-id="question-3">Question 3</h2>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>sim_pi <span class="ot">&lt;-</span> <span class="cf">function</span>(<span class="at">n =</span> <span class="dv">1000</span>, <span class="at">i =</span> <span class="cn">NULL</span>) {</span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>  p <span class="ot">&lt;-</span> <span class="fu">matrix</span>(<span class="fu">runif</span>(n<span class="sc">*</span><span class="dv">2</span>), <span class="at">ncol =</span> <span class="dv">2</span>)</span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mean</span>(<span class="fu">rowSums</span>(p<span class="sc">^</span><span class="dv">2</span>) <span class="sc">&lt;</span> <span class="dv">1</span>) <span class="sc">*</span> <span class="dv">4</span></span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a><span class="co"># Here is an example of the run</span></span>
+<span id="cb19-7"><a href="#cb19-7" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">156</span>)</span>
+<span id="cb19-8"><a href="#cb19-8" aria-hidden="true" tabindex="-1"></a><span class="fu">sim_pi</span>(<span class="dv">1000</span>) <span class="co"># 3.132</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 3.132</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(parallel)</span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">1231</span>)</span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a><span class="fu">system.time</span>({</span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a>  cl <span class="ot">&lt;-</span> <span class="fu">makeCluster</span>(<span class="fu">detectCores</span>() <span class="sc">-</span> <span class="dv">1</span>)</span>
+<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb21-8"><a href="#cb21-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">clusterExport</span>(cl, <span class="at">varlist =</span> <span class="fu">c</span>(<span class="st">"sim_pi"</span>))</span>
+<span id="cb21-9"><a href="#cb21-9" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb21-10"><a href="#cb21-10" aria-hidden="true" tabindex="-1"></a>  ans_par <span class="ot">&lt;-</span> <span class="fu">unlist</span>(<span class="fu">parLapply</span>(cl, <span class="dv">1</span><span class="sc">:</span><span class="dv">4000</span>, sim_pi, <span class="at">n =</span> <span class="dv">10000</span>))</span>
+<span id="cb21-11"><a href="#cb21-11" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb21-12"><a href="#cb21-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">stopCluster</span>(cl)</span>
+<span id="cb21-13"><a href="#cb21-13" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb21-14"><a href="#cb21-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">print</span>(<span class="fu">mean</span>(ans_par))</span>
+<span id="cb21-15"><a href="#cb21-15" aria-hidden="true" tabindex="-1"></a>})</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 3.141979</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>   user  system elapsed 
+  0.028   0.018   1.782 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="co">#now run for initial process</span></span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">1231</span>)</span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a><span class="fu">system.time</span>({</span>
+<span id="cb24-5"><a href="#cb24-5" aria-hidden="true" tabindex="-1"></a>  ans_seq <span class="ot">&lt;-</span> <span class="fu">unlist</span>(<span class="fu">lapply</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">4000</span>, sim_pi, <span class="at">n =</span> <span class="dv">10000</span>))</span>
+<span id="cb24-6"><a href="#cb24-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">print</span>(<span class="fu">mean</span>(ans_seq))</span>
+<span id="cb24-7"><a href="#cb24-7" aria-hidden="true" tabindex="-1"></a>})</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 3.14124</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>   user  system elapsed 
+  3.061   1.057   4.236 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ggplot2)</span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a>df <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">value =</span> <span class="fu">c</span>(ans_seq, ans_par),</span>
+<span id="cb27-5"><a href="#cb27-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">method =</span> <span class="fu">rep</span>(<span class="fu">c</span>(<span class="st">"Sequential"</span>, <span class="st">"Parallel"</span>), <span class="at">each =</span> <span class="fu">length</span>(ans_seq))</span>
+<span id="cb27-6"><a href="#cb27-6" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb27-7"><a href="#cb27-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb27-8"><a href="#cb27-8" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(df, <span class="fu">aes</span>(<span class="at">x =</span> value, <span class="at">fill =</span> method)) <span class="sc">+</span></span>
+<span id="cb27-9"><a href="#cb27-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_density</span>(<span class="at">alpha =</span> <span class="fl">0.4</span>) <span class="sc">+</span></span>
+<span id="cb27-10"><a href="#cb27-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_vline</span>(<span class="at">xintercept =</span> pi, <span class="at">linetype =</span> <span class="st">"dashed"</span>) <span class="sc">+</span></span>
+<span id="cb27-11"><a href="#cb27-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(</span>
+<span id="cb27-12"><a href="#cb27-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">title =</span> <span class="st">"Distribution of Pi Estimates"</span>,</span>
+<span id="cb27-13"><a href="#cb27-13" aria-hidden="true" tabindex="-1"></a>    <span class="at">x =</span> <span class="st">"Estimated Pi"</span>,</span>
+<span id="cb27-14"><a href="#cb27-14" aria-hidden="true" tabindex="-1"></a>    <span class="at">y =</span> <span class="st">"Density"</span></span>
+<span id="cb27-15"><a href="#cb27-15" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
+<span id="cb27-16"><a href="#cb27-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="hw-04_files/figure-html/unnamed-chunk-5-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb28"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a>mb <span class="ot">&lt;-</span> <span class="fu">microbenchmark</span>(</span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">sequential =</span> <span class="fu">unlist</span>(<span class="fu">lapply</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">4000</span>, sim_pi, <span class="at">n =</span> <span class="dv">10000</span>)),</span>
+<span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">parallel =</span> {</span>
+<span id="cb28-4"><a href="#cb28-4" aria-hidden="true" tabindex="-1"></a>    cl <span class="ot">&lt;-</span> <span class="fu">makeCluster</span>(<span class="fu">detectCores</span>() <span class="sc">-</span> <span class="dv">1</span>)</span>
+<span id="cb28-5"><a href="#cb28-5" aria-hidden="true" tabindex="-1"></a>    <span class="fu">clusterExport</span>(cl, <span class="st">"sim_pi"</span>)</span>
+<span id="cb28-6"><a href="#cb28-6" aria-hidden="true" tabindex="-1"></a>    res <span class="ot">&lt;-</span> <span class="fu">unlist</span>(<span class="fu">parLapply</span>(cl, <span class="dv">1</span><span class="sc">:</span><span class="dv">4000</span>, sim_pi, <span class="at">n =</span> <span class="dv">10000</span>))</span>
+<span id="cb28-7"><a href="#cb28-7" aria-hidden="true" tabindex="-1"></a>    <span class="fu">stopCluster</span>(cl)</span>
+<span id="cb28-8"><a href="#cb28-8" aria-hidden="true" tabindex="-1"></a>    res</span>
+<span id="cb28-9"><a href="#cb28-9" aria-hidden="true" tabindex="-1"></a>  },</span>
+<span id="cb28-10"><a href="#cb28-10" aria-hidden="true" tabindex="-1"></a>  <span class="at">times =</span> <span class="dv">10</span></span>
+<span id="cb28-11"><a href="#cb28-11" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb28-12"><a href="#cb28-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-13"><a href="#cb28-13" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(mb)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Unit: seconds
+       expr      min       lq     mean   median       uq      max neval cld
+ sequential 4.156547 4.166660 4.237414 4.179041 4.310835 4.434233    10  a 
+   parallel 1.357748 1.360957 1.376363 1.374340 1.378912 1.419383    10   b</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb30"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a><span class="fu">autoplot</span>(mb)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="hw-04_files/figure-html/unnamed-chunk-5-2.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>While it is not a dramatic improvement, the parallel process did slightly speed up the computation. I wonder if my computer being old and not very powerful made this closer than I thought it would be. Both methods yield similar results for estimation of pi.</p>
+</section>
+<section id="question-4" class="level2">
+<h2 class="anchored" data-anchor-id="question-4">Question 4</h2>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb31"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(RSQLite)</span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(DBI)</span>
+<span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-4"><a href="#cb31-4" aria-hidden="true" tabindex="-1"></a>con <span class="ot">&lt;-</span> <span class="fu">dbConnect</span>(RSQLite<span class="sc">::</span><span class="fu">SQLite</span>(), <span class="at">dbname =</span> <span class="st">":memory:"</span>)</span>
+<span id="cb31-5"><a href="#cb31-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-6"><a href="#cb31-6" aria-hidden="true" tabindex="-1"></a>surveys <span class="ot">&lt;-</span> <span class="fu">read.csv</span>(<span class="st">"surveys.csv"</span>)</span>
+<span id="cb31-7"><a href="#cb31-7" aria-hidden="true" tabindex="-1"></a>species <span class="ot">&lt;-</span> <span class="fu">read.csv</span>(<span class="st">"species.csv"</span>)</span>
+<span id="cb31-8"><a href="#cb31-8" aria-hidden="true" tabindex="-1"></a>plots   <span class="ot">&lt;-</span> <span class="fu">read.csv</span>(<span class="st">"plots.csv"</span>)</span>
+<span id="cb31-9"><a href="#cb31-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-10"><a href="#cb31-10" aria-hidden="true" tabindex="-1"></a><span class="fu">dbWriteTable</span>(con, <span class="st">"surveys"</span>, surveys)</span>
+<span id="cb31-11"><a href="#cb31-11" aria-hidden="true" tabindex="-1"></a><span class="fu">dbWriteTable</span>(con, <span class="st">"species"</span>, species)</span>
+<span id="cb31-12"><a href="#cb31-12" aria-hidden="true" tabindex="-1"></a><span class="fu">dbWriteTable</span>(con, <span class="st">"plots"</span>,   plots)</span>
+<span id="cb31-13"><a href="#cb31-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-14"><a href="#cb31-14" aria-hidden="true" tabindex="-1"></a><span class="fu">dbListTables</span>(con)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "plots"   "species" "surveys"</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb33"><pre class="sourceCode sql code-with-copy"><code class="sourceCode sql"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a>PRAGMA table_info(surveys)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>9 records</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">cid</th>
+<th style="text-align: left;">name</th>
+<th style="text-align: left;">type</th>
+<th style="text-align: right;">notnull</th>
+<th style="text-align: left;">dflt_value</th>
+<th style="text-align: right;">pk</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">0</td>
+<td style="text-align: left;">record_id</td>
+<td style="text-align: left;">INTEGER</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">NA</td>
+<td style="text-align: right;">0</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">month</td>
+<td style="text-align: left;">INTEGER</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">NA</td>
+<td style="text-align: right;">0</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">2</td>
+<td style="text-align: left;">day</td>
+<td style="text-align: left;">INTEGER</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">NA</td>
+<td style="text-align: right;">0</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">3</td>
+<td style="text-align: left;">year</td>
+<td style="text-align: left;">INTEGER</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">NA</td>
+<td style="text-align: right;">0</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">4</td>
+<td style="text-align: left;">plot_id</td>
+<td style="text-align: left;">INTEGER</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">NA</td>
+<td style="text-align: right;">0</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">5</td>
+<td style="text-align: left;">species_id</td>
+<td style="text-align: left;">TEXT</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">NA</td>
+<td style="text-align: right;">0</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">6</td>
+<td style="text-align: left;">sex</td>
+<td style="text-align: left;">TEXT</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">NA</td>
+<td style="text-align: right;">0</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">7</td>
+<td style="text-align: left;">hindfoot_length</td>
+<td style="text-align: left;">INTEGER</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">NA</td>
+<td style="text-align: right;">0</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">8</td>
+<td style="text-align: left;">weight</td>
+<td style="text-align: left;">INTEGER</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;">NA</td>
+<td style="text-align: right;">0</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb34"><pre class="sourceCode sql code-with-copy"><code class="sourceCode sql"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a><span class="kw">SELECT</span> <span class="dt">month</span>, <span class="dt">day</span>, <span class="dt">year</span>, species_id, <span class="fu">ROUND</span>(weight <span class="op">/</span> <span class="fl">1000.0</span>, <span class="dv">2</span>) <span class="kw">AS</span> weight_kg</span>
+<span id="cb34-2"><a href="#cb34-2" aria-hidden="true" tabindex="-1"></a><span class="kw">FROM</span> surveys</span>
+<span id="cb34-3"><a href="#cb34-3" aria-hidden="true" tabindex="-1"></a><span class="kw">WHERE</span> <span class="dt">year</span> <span class="op">=</span> <span class="dv">1999</span></span>
+<span id="cb34-4"><a href="#cb34-4" aria-hidden="true" tabindex="-1"></a><span class="kw">ORDER</span> <span class="kw">BY</span> species_id</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Displaying records 1 - 10</caption>
+<thead>
+<tr class="header">
+<th style="text-align: right;">month</th>
+<th style="text-align: right;">day</th>
+<th style="text-align: right;">year</th>
+<th style="text-align: left;">species_id</th>
+<th style="text-align: left;">weight_kg</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">17</td>
+<td style="text-align: right;">1999</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">NA</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">21</td>
+<td style="text-align: right;">1999</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">NA</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">21</td>
+<td style="text-align: right;">1999</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">NA</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">21</td>
+<td style="text-align: right;">1999</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">NA</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">15</td>
+<td style="text-align: right;">1999</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">NA</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">15</td>
+<td style="text-align: right;">1999</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">NA</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">15</td>
+<td style="text-align: right;">1999</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">NA</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">17</td>
+<td style="text-align: right;">1999</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">NA</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">18</td>
+<td style="text-align: right;">1999</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">NA</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">18</td>
+<td style="text-align: right;">1999</td>
+<td style="text-align: left;"></td>
+<td style="text-align: left;">NA</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<section id="question-5" class="level2">
+<h2 class="anchored" data-anchor-id="question-5">Question 5</h2>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb35"><pre class="sourceCode sql code-with-copy"><code class="sourceCode sql"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a><span class="kw">SELECT</span> <span class="fu">SUM</span>(weight) <span class="kw">AS</span> <span class="ot">"Total Weight"</span>, <span class="fu">AVG</span>(weight) <span class="kw">AS</span> <span class="ot">"Average Weight"</span>, <span class="fu">MIN</span>(weight) <span class="kw">AS</span> <span class="ot">"Minimum Weight"</span>, <span class="fu">MAX</span>(weight) <span class="kw">AS</span> <span class="ot">"Maximum Weight"</span></span>
+<span id="cb35-2"><a href="#cb35-2" aria-hidden="true" tabindex="-1"></a><span class="kw">FROM</span> surveys</span>
+<span id="cb35-3"><a href="#cb35-3" aria-hidden="true" tabindex="-1"></a><span class="kw">WHERE</span> weight <span class="kw">BETWEEN</span> <span class="dv">5</span> <span class="kw">AND</span> <span class="dv">10</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>1 records</caption>
+<thead>
+<tr class="header">
+<th style="text-align: right;">Total Weight</th>
+<th style="text-align: right;">Average Weight</th>
+<th style="text-align: right;">Minimum Weight</th>
+<th style="text-align: right;">Maximum Weight</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">24874</td>
+<td style="text-align: right;">8.392038</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">10</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<section id="question-6" class="level2">
+<h2 class="anchored" data-anchor-id="question-6">Question 6</h2>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb36"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a>yearly_species_summary <span class="ot">&lt;-</span> <span class="fu">dbGetQuery</span>(con, <span class="st">"</span></span>
+<span id="cb36-2"><a href="#cb36-2" aria-hidden="true" tabindex="-1"></a><span class="st">  SELECT year,</span></span>
+<span id="cb36-3"><a href="#cb36-3" aria-hidden="true" tabindex="-1"></a><span class="st">         species_id,</span></span>
+<span id="cb36-4"><a href="#cb36-4" aria-hidden="true" tabindex="-1"></a><span class="st">         COUNT(*)       AS count,</span></span>
+<span id="cb36-5"><a href="#cb36-5" aria-hidden="true" tabindex="-1"></a><span class="st">         AVG(weight)    AS avg_weight</span></span>
+<span id="cb36-6"><a href="#cb36-6" aria-hidden="true" tabindex="-1"></a><span class="st">  FROM surveys</span></span>
+<span id="cb36-7"><a href="#cb36-7" aria-hidden="true" tabindex="-1"></a><span class="st">  WHERE species_id IS NOT NULL</span></span>
+<span id="cb36-8"><a href="#cb36-8" aria-hidden="true" tabindex="-1"></a><span class="st">  GROUP BY year, species_id</span></span>
+<span id="cb36-9"><a href="#cb36-9" aria-hidden="true" tabindex="-1"></a><span class="st">  ORDER BY year, species_id</span></span>
+<span id="cb36-10"><a href="#cb36-10" aria-hidden="true" tabindex="-1"></a><span class="st">"</span>)</span>
+<span id="cb36-11"><a href="#cb36-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb36-12"><a href="#cb36-12" aria-hidden="true" tabindex="-1"></a>yearly_species_summary</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>    year species_id count avg_weight
+1   1977               16         NA
+2   1977         DM   264  41.141304
+3   1977         DO    12  42.666667
+4   1977         DS    98 121.437500
+5   1977         NL    31         NA
+6   1977         OL    10  21.666667
+7   1977         OT    17  21.000000
+8   1977         OX     7  21.333333
+9   1977         PE     6  19.500000
+10  1977         PF    31   7.173913
+11  1977         PP     7  15.333333
+12  1977         RM     2  10.000000
+13  1977         SH     1         NA
+14  1977         SS     1         NA
+15  1978               56         NA
+16  1978         AH     1         NA
+17  1978         DM   389  40.795455
+18  1978         DO    22  45.000000
+19  1978         DS   320 115.198653
+20  1978         NL    48 184.656250
+21  1978         OL    47  31.027027
+22  1978         OT    66  23.220000
+23  1978         OX     1         NA
+24  1978         PE    17  20.428571
+25  1978         PF    40   7.088235
+26  1978         PM     3  20.666667
+27  1978         PP    24  14.869565
+28  1978         RM     3   7.500000
+29  1978         SA     2         NA
+30  1978         SH     1  89.000000
+31  1978         SS     8 130.000000
+32  1979               61         NA
+33  1979         DM   209  43.507317
+34  1979         DO    31  45.862069
+35  1979         DS   204 111.796954
+36  1979         NL    30 138.000000
+37  1979         OL    46  33.717391
+38  1979         OT    68  23.075758
+39  1979         PE    17  20.529412
+40  1979         PF    19   7.529412
+41  1979         PM     6  23.666667
+42  1979         PP    20  15.105263
+43  1979         RM     6   8.333333
+44  1979         SS     2         NA
+45  1980               40         NA
+46  1980         AB     5         NA
+47  1980         CB     1         NA
+48  1980         CM    12         NA
+49  1980         CQ     2         NA
+50  1980         DM   493  44.136082
+51  1980         DO    89  48.058824
+52  1980         DS   346 120.725664
+53  1980         DX     1         NA
+54  1980         NL    57 158.982143
+55  1980         OL    85  33.107143
+56  1980         OT    96  24.083333
+57  1980         PE    20  22.450000
+58  1980         PF    95   7.455556
+59  1980         PM     1  21.000000
+60  1980         PP    17  14.176471
+61  1980         RM    46  10.227273
+62  1980         SS     9         NA
+63  1981               55         NA
+64  1981         AB     7         NA
+65  1981         CB     1         NA
+66  1981         CQ     4         NA
+67  1981         DM   559  44.032907
+68  1981         DO   123  49.111111
+69  1981         DS   354 125.818444
+70  1981         NL    63 165.903226
+71  1981         OL    55  33.296296
+72  1981         OT    65  24.415385
+73  1981         PE    43  20.558140
+74  1981         PF    59   7.152542
+75  1981         PM    16  19.933333
+76  1981         PP    20  13.950000
+77  1981         RM    29  11.178571
+78  1981         SA    11         NA
+79  1981         SS     8  57.000000
+80  1982               14         NA
+81  1982         AB    34         NA
+82  1982         AH     1         NA
+83  1982         CQ     8         NA
+84  1982         DM   609  41.975042
+85  1982         DO   117  47.919643
+86  1982         DS   354 115.647929
+87  1982         NL   111 160.613208
+88  1982         OL    83  35.590361
+89  1982         OT    94  24.925532
+90  1982         OX     1  24.000000
+91  1982         PC     2         NA
+92  1982         PE   107  21.173077
+93  1982         PF   152   6.918919
+94  1982         PM    72  21.391304
+95  1982         PP    32  16.125000
+96  1982         RF     2  11.500000
+97  1982         RM   154  10.436242
+98  1982         SA    17         NA
+99  1982         SH     2  79.000000
+100 1982         SS    12         NA
+101 1983               21         NA
+102 1983         AB    41         NA
+103 1983         AH     2         NA
+104 1983         CB     3         NA
+105 1983         DM   528  40.944551
+106 1983         DO   167  47.150602
+107 1983         DS   280 122.033088
+108 1983         DX     1         NA
+109 1983         NL    98 156.691489
+110 1983         OL    65  34.584615
+111 1983         OT    86  24.697674
+112 1983         PC     3         NA
+113 1983         PE    38  20.864865
+114 1983         PF   114   6.833333
+115 1983         PG     1         NA
+116 1983         PM    42  22.023810
+117 1983         PP    32  15.468750
+118 1983         RM   127   9.872000
+119 1983         SA    10         NA
+120 1983         SH     2         NA
+121 1983         SS    12         NA
+122 1984               30         NA
+123 1984         AB    12         NA
+124 1984         AH     2         NA
+125 1984         CB     1         NA
+126 1984         CQ     2         NA
+127 1984         DM   396  40.765306
+128 1984         DO   108  48.415094
+129 1984         DS    76 124.082192
+130 1984         NL    64 150.095238
+131 1984         OL    71  32.550725
+132 1984         OT    49  22.416667
+133 1984         OX     1  18.000000
+134 1984         PE    20  20.210526
+135 1984         PF     7   7.428571
+136 1984         PH     7  28.000000
+137 1984         PM    12  19.545455
+138 1984         PP    26  15.307692
+139 1984         PU     2         NA
+140 1984         RM    60  11.152542
+141 1984         SA    20         NA
+142 1984         SS    15         NA
+143 1985               22         NA
+144 1985         AB    14         NA
+145 1985         AH    14         NA
+146 1985         CB     1         NA
+147 1985         DM   667  41.507645
+148 1985         DO   225  47.956731
+149 1985         DS    98 124.326316
+150 1985         NL    45 148.829268
+151 1985         OL    94  32.108696
+152 1985         OT    62  22.064516
+153 1985         PE    51  20.360000
+154 1985         PF     1         NA
+155 1985         PH     3  32.666667
+156 1985         PM    17  19.000000
+157 1985         PP    35  15.764706
+158 1985         RM    72   8.371429
+159 1985         SA     3         NA
+160 1985         SS    14         NA
+161 1986               20         NA
+162 1986         AB     5         NA
+163 1986         AH    19         NA
+164 1986         CB     4         NA
+165 1986         DM   406  43.361596
+166 1986         DO   115  49.372727
+167 1986         DS    88 128.071429
+168 1986         DX     1         NA
+169 1986         NL    60 159.724138
+170 1986         OL    43  30.880952
+171 1986         OT    25  21.500000
+172 1986         PE    26  22.520000
+173 1986         PF     2   8.000000
+174 1986         PH     1  39.000000
+175 1986         PM    34  21.696970
+176 1986         PP    26  16.750000
+177 1986         RM    53  10.750000
+178 1986         SA     1         NA
+179 1986         SH     1  55.000000
+180 1986         SS    12         NA
+181 1987                3         NA
+182 1987         AB    35         NA
+183 1987         AH    41         NA
+184 1987         CB     5         NA
+185 1987         CM     1         NA
+186 1987         CV     1         NA
+187 1987         DM   469  43.232609
+188 1987         DO   213  50.087379
+189 1987         DS   104 126.383838
+190 1987         NL   128 158.840000
+191 1987         OL    79  30.779221
+192 1987         OT    43  23.069767
+193 1987         PC     5         NA
+194 1987         PE   142  21.625899
+195 1987         PF     4   7.500000
+196 1987         PM   133  22.297710
+197 1987         PP    45  17.840909
+198 1987         RM   189  10.657609
+199 1987         SA     1         NA
+200 1987         SH     5  73.800000
+201 1987         SS    20         NA
+202 1987         UP     2         NA
+203 1987         UR     3         NA
+204 1988               12         NA
+205 1988         AB    39         NA
+206 1988         AH    26         NA
+207 1988         CB     6         NA
+208 1988         DM   365  43.397790
+209 1988         DO   144  51.463768
+210 1988         DS    54 129.490566
+211 1988         DX     1         NA
+212 1988         NL   102 163.104167
+213 1988         OL    51  30.306122
+214 1988         OT    86  24.070588
+215 1988         PE   190  22.625668
+216 1988         PF     2   8.000000
+217 1988         PG     2         NA
+218 1988         PH     1  33.000000
+219 1988         PM    54  21.759259
+220 1988         PP    53  18.280000
+221 1988         RF    11  13.818182
+222 1988         RM   211  10.322115
+223 1988         SA     1         NA
+224 1988         SH    31  72.806452
+225 1988         SS    20         NA
+226 1988         UL     1         NA
+227 1988         UP     3         NA
+228 1988         UR     1         NA
+229 1988         ZL     2         NA
+230 1989                7         NA
+231 1989         AB    31         NA
+232 1989         AH    30         NA
+233 1989         BA     3   7.000000
+234 1989         CB     1         NA
+235 1989         CS     1         NA
+236 1989         DM   321  44.349206
+237 1989         DO   119  51.025641
+238 1989         DS    33 121.896552
+239 1989         NL    67 151.278689
+240 1989         OL    57  31.947368
+241 1989         OT   102  24.663366
+242 1989         OX     1  20.000000
+243 1989         PC     1         NA
+244 1989         PE   177  21.935673
+245 1989         PF    13   7.230769
+246 1989         PH     2  30.500000
+247 1989         PM    27  20.222222
+248 1989         PP    45  17.409091
+249 1989         RF    49  13.346939
+250 1989         RM   398  10.411311
+251 1989         SA     3         NA
+252 1989         SC     1         NA
+253 1989         SF     5  54.800000
+254 1989         SH    55  76.345455
+255 1989         SS    18         NA
+256 1989         UP     2         NA
+257 1990               15         NA
+258 1990         AB    27         NA
+259 1990         AH    22         NA
+260 1990         BA    11   8.000000
+261 1990         DM   462  41.769912
+262 1990         DO   171  48.512048
+263 1990         DS    17 121.187500
+264 1990         NL    29 154.275862
+265 1990         OL    25  31.200000
+266 1990         OT    77  23.675325
+267 1990         PC     8         NA
+268 1990         PE    75  21.671233
+269 1990         PF    51   7.117647
+270 1990         PG     4         NA
+271 1990         PH     7  31.142857
+272 1990         PP    34  16.029412
+273 1990         RF    12  12.916667
+274 1990         RM   231  10.305677
+275 1990         SF    18  52.611111
+276 1990         SH     9  76.888889
+277 1990         SS     5         NA
+278 1990         UP     1         NA
+279 1991               15         NA
+280 1991         AB    15         NA
+281 1991         AH    21         NA
+282 1991         AS     1         NA
+283 1991         BA    26   9.240000
+284 1991         CB     2         NA
+285 1991         DM   404  43.148338
+286 1991         DO   122  49.695652
+287 1991         DS    11 113.000000
+288 1991         DX     4         NA
+289 1991         NL    30 148.785714
+290 1991         OL    36  28.171429
+291 1991         OT   107  24.588235
+292 1991         PC     6         NA
+293 1991         PE    65  21.435484
+294 1991         PF    62   7.827586
+295 1991         PP    88  17.904762
+296 1991         RM   307  10.498305
+297 1991         RO     1  11.000000
+298 1991         SA     2         NA
+299 1991         SF     7  93.166667
+300 1991         SH     1  63.000000
+301 1991         SO    11  53.909091
+302 1991         SS     2         NA
+303 1991         UR     1         NA
+304 1992               30         NA
+305 1992         AB    10         NA
+306 1992         AH    16         NA
+307 1992         BA     6   7.833333
+308 1992         CB     7         NA
+309 1992         DM   307  43.877966
+310 1992         DO    94  48.367816
+311 1992         DS    18 112.352941
+312 1992         DX    12         NA
+313 1992         NL    15 139.000000
+314 1992         OL    45  28.454545
+315 1992         OT    42  24.928571
+316 1992         PC     9         NA
+317 1992         PE    41  22.750000
+318 1992         PF    57   8.767857
+319 1992         PH     7  31.142857
+320 1992         PI     1  18.000000
+321 1992         PP   131  17.479675
+322 1992         RM   158  10.904762
+323 1992         SF     3  43.000000
+324 1992         SO    20  55.263158
+325 1992         SS     7         NA
+326 1992         UL     1         NA
+327 1992         UR     1         NA
+328 1993               36         NA
+329 1993         AB     9         NA
+330 1993         AH    15         NA
+331 1993         AS     1         NA
+332 1993         CB     5         NA
+333 1993         CU     1         NA
+334 1993         DM   253  43.373984
+335 1993         DO    29  48.461538
+336 1993         DS    18 105.722222
+337 1993         DX     3         NA
+338 1993         NL    24 127.391304
+339 1993         OL    35  27.545455
+340 1993         OT    22  22.363636
+341 1993         OX     1         NA
+342 1993         PC     1         NA
+343 1993         PE    13  19.230769
+344 1993         PF    70   8.238806
+345 1993         PP   100  17.954023
+346 1993         RM   103  10.747475
+347 1993         SF     3  44.000000
+348 1993         SO     6  55.600000
+349 1993         SS     1         NA
+350 1993         ST     1         NA
+351 1994               53         NA
+352 1994         AB     7         NA
+353 1994         AH    19         NA
+354 1994         CB     1         NA
+355 1994         DM   293  42.373288
+356 1994         DO    25  47.750000
+357 1994         DS     9 106.625000
+358 1994         DX     2         NA
+359 1994         NL    10 186.875000
+360 1994         OL    21  21.900000
+361 1994         OT    21  25.285714
+362 1994         PC     1         NA
+363 1994         PE     3  18.000000
+364 1994         PF    73   7.855072
+365 1994         PP    74  17.585714
+366 1994         PU     2         NA
+367 1994         RM    40  10.675000
+368 1994         SO     3  62.333333
+369 1994         SS     7         NA
+370 1994         SU     1         NA
+371 1994         UL     2         NA
+372 1994         UR     1         NA
+373 1995               42         NA
+374 1995         AB     4         NA
+375 1995         AH    36         NA
+376 1995         CB     2         NA
+377 1995         DM   436  44.806147
+378 1995         DO    58  49.592593
+379 1995         DX     3         NA
+380 1995         NL     8 155.833333
+381 1995         OL    29  27.296296
+382 1995         OT    38  24.868421
+383 1995         PB     7  34.000000
+384 1995         PC     1         NA
+385 1995         PE    14  21.230769
+386 1995         PF   158   8.780645
+387 1995         PH     3  35.333333
+388 1995         PI     1         NA
+389 1995         PL     3  22.333333
+390 1995         PM     8  27.375000
+391 1995         PP   277  16.844444
+392 1995         PU     1         NA
+393 1995         RM    81  12.653846
+394 1995         RX     1  20.000000
+395 1995         SS     7         NA
+396 1995         SU     4         NA
+397 1996               17         NA
+398 1996         AH    25         NA
+399 1996         DM   492  44.506173
+400 1996         DO   174  47.234940
+401 1996         DX     1         NA
+402 1996         NL     7 148.000000
+403 1996         OL    13  27.769231
+404 1996         OT   108  23.453704
+405 1996         PB    39  32.578947
+406 1996         PC     1         NA
+407 1996         PE    36  22.027778
+408 1996         PF   330   8.393846
+409 1996         PL     6  21.166667
+410 1996         PM    50  20.224490
+411 1996         PP   298  18.095563
+412 1996         PX     2         NA
+413 1996         RM    90  11.455556
+414 1996         SA     1         NA
+415 1996         SS    16         NA
+416 1997                1         NA
+417 1997         AH    37         NA
+418 1997         CB     3         NA
+419 1997         DM   576  44.708551
+420 1997         DO   253  48.177866
+421 1997         DS     6 111.000000
+422 1997         NL    48 150.688889
+423 1997         OL     8  33.625000
+424 1997         OT   258  24.785156
+425 1997         PB   259  31.085603
+426 1997         PE    57  20.929825
+427 1997         PF   186   8.448649
+428 1997         PH     1  22.000000
+429 1997         PL    19  18.789474
+430 1997         PM   271  21.126394
+431 1997         PP   325  18.175000
+432 1997         PX     2  19.000000
+433 1997         RF     1  20.000000
+434 1997         RM   158  11.230769
+435 1997         RX     1  11.000000
+436 1997         SA     1         NA
+437 1997         SH     7  50.857143
+438 1997         SO     3  54.666667
+439 1997         SS    12         NA
+440 1998               20         NA
+441 1998         AB     2         NA
+442 1998         AH    33         NA
+443 1998         CB     4         NA
+444 1998         CT     1         NA
+445 1998         DM   503  43.131403
+446 1998         DO   111  49.731183
+447 1998         DS     9 116.000000
+448 1998         DX     2         NA
+449 1998         NL    32 159.466667
+450 1998         OT   164  24.675676
+451 1998         PB   329  30.082237
+452 1998         PC     1         NA
+453 1998         PE    24  20.304348
+454 1998         PF    26   8.720000
+455 1998         PL     7  16.714286
+456 1998         PM   103  20.591398
+457 1998         PP   208  16.266990
+458 1998         PX     1         NA
+459 1998         RM    13  13.100000
+460 1998         SA     2         NA
+461 1998         SS    15         NA
+462 1999               27         NA
+463 1999         AH    14         NA
+464 1999         DM   348  43.945402
+465 1999         DO    84  48.012048
+466 1999         DS     7 120.714286
+467 1999         DX     3         NA
+468 1999         NL    20 182.200000
+469 1999         OT   105  25.723810
+470 1999         PB   272  31.710037
+471 1999         PE     7  25.428571
+472 1999         PM    44  22.523810
+473 1999         PP   167  16.521212
+474 1999         RM    28  10.555556
+475 1999         SH     2  54.000000
+476 1999         SS     7         NA
+477 2000               43         NA
+478 2000         AB     3         NA
+479 2000         AH    12         NA
+480 2000         DM   233  43.126638
+481 2000         DO    91  49.224719
+482 2000         DX     4         NA
+483 2000         NL    29 179.307692
+484 2000         OT   154  25.303448
+485 2000         PB   555  30.878899
+486 2000         PE    15  21.615385
+487 2000         PG     1         NA
+488 2000         PL     1  21.000000
+489 2000         PM     2  20.500000
+490 2000         PP   381  16.788618
+491 2000         PX     1         NA
+492 2000         RM    15  11.400000
+493 2000         SH     8  73.375000
+494 2000         SS     4         NA
+495 2001               70         NA
+496 2001         AB     1         NA
+497 2001         AH    23         NA
+498 2001         CB     3         NA
+499 2001         DM   305  45.442177
+500 2001         DO    81  52.233766
+501 2001         DX     1         NA
+502 2001         NL    48 167.851064
+503 2001         OT   167  23.707792
+504 2001         PB   538  32.798851
+505 2001         PE    35  20.400000
+506 2001         PF    27   8.538462
+507 2001         PI     2  18.000000
+508 2001         PM     3  26.666667
+509 2001         PP   273  17.752896
+510 2001         RM    15  11.333333
+511 2001         SH    11  79.900000
+512 2001         SS     5         NA
+513 2001         UR     2         NA
+514 2002               37         NA
+515 2002         AB     2         NA
+516 2002         AH    28         NA
+517 2002         DM   309  46.168317
+518 2002         DO   249  49.514403
+519 2002         DX     1         NA
+520 2002         NL    48 182.159091
+521 2002         OL     8  25.428571
+522 2002         OT   127  23.833333
+523 2002         PB   892  32.359447
+524 2002         PE    60  21.719298
+525 2002         PF    18   7.388889
+526 2002         PI     5  20.000000
+527 2002         PM     1  19.000000
+528 2002         PP   385  17.018617
+529 2002         RM    20  10.000000
+530 2002         RO     7  10.142857
+531 2002         SF     7  62.166667
+532 2002         SH    11  64.666667
+533 2002         SS     9         NA
+534 2002         UR     1         NA
+535 2002         US     4         NA</code></pre>
+</div>
+</div>
+</section>
+<section id="question-7" class="level2">
+<h2 class="anchored" data-anchor-id="question-7">Question 7</h2>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb38"><pre class="sourceCode sql code-with-copy"><code class="sourceCode sql"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a><span class="kw">SELECT</span> taxa, <span class="fu">COUNT</span>(<span class="op">*</span>) <span class="kw">AS</span> <span class="ot">"Number of Species"</span></span>
+<span id="cb38-2"><a href="#cb38-2" aria-hidden="true" tabindex="-1"></a><span class="kw">FROM</span> species</span>
+<span id="cb38-3"><a href="#cb38-3" aria-hidden="true" tabindex="-1"></a><span class="kw">GROUP</span> <span class="kw">BY</span> taxa</span>
+<span id="cb38-4"><a href="#cb38-4" aria-hidden="true" tabindex="-1"></a><span class="kw">HAVING</span> <span class="fu">COUNT</span>(<span class="op">*</span>) <span class="op">&gt;</span> <span class="dv">10</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>2 records</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">taxa</th>
+<th style="text-align: right;">Number of Species</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Bird</td>
+<td style="text-align: right;">13</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Rodent</td>
+<td style="text-align: right;">31</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<section id="question-8" class="level2">
+<h2 class="anchored" data-anchor-id="question-8">Question 8</h2>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb39"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb39-1"><a href="#cb39-1" aria-hidden="true" tabindex="-1"></a>genus_plot_counts <span class="ot">&lt;-</span> <span class="fu">dbGetQuery</span>(con, <span class="st">"</span></span>
+<span id="cb39-2"><a href="#cb39-2" aria-hidden="true" tabindex="-1"></a><span class="st">  SELECT p.plot_id,</span></span>
+<span id="cb39-3"><a href="#cb39-3" aria-hidden="true" tabindex="-1"></a><span class="st">         sp.genus,</span></span>
+<span id="cb39-4"><a href="#cb39-4" aria-hidden="true" tabindex="-1"></a><span class="st">         COUNT(*) AS num_animals</span></span>
+<span id="cb39-5"><a href="#cb39-5" aria-hidden="true" tabindex="-1"></a><span class="st">  FROM surveys s</span></span>
+<span id="cb39-6"><a href="#cb39-6" aria-hidden="true" tabindex="-1"></a><span class="st">  JOIN plots   p  ON s.plot_id   = p.plot_id</span></span>
+<span id="cb39-7"><a href="#cb39-7" aria-hidden="true" tabindex="-1"></a><span class="st">  JOIN species sp ON s.species_id = sp.species_id</span></span>
+<span id="cb39-8"><a href="#cb39-8" aria-hidden="true" tabindex="-1"></a><span class="st">  WHERE sp.genus IS NOT NULL</span></span>
+<span id="cb39-9"><a href="#cb39-9" aria-hidden="true" tabindex="-1"></a><span class="st">  GROUP BY p.plot_id, sp.genus</span></span>
+<span id="cb39-10"><a href="#cb39-10" aria-hidden="true" tabindex="-1"></a><span class="st">  ORDER BY p.plot_id ASC, num_animals DESC</span></span>
+<span id="cb39-11"><a href="#cb39-11" aria-hidden="true" tabindex="-1"></a><span class="st">"</span>)</span>
+<span id="cb39-12"><a href="#cb39-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb39-13"><a href="#cb39-13" aria-hidden="true" tabindex="-1"></a>genus_plot_counts</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>    plot_id            genus num_animals
+1         1        Dipodomys        1330
+2         1      Chaetodipus         332
+3         1        Onychomys         153
+4         1          Neotoma          54
+5         1      Perognathus          34
+6         1       Peromyscus          28
+7         1  Reithrodontomys          24
+8         1     Spermophilus          12
+9         1       Amphispiza           7
+10        1 Ammospermophilus           7
+11        1           Pipilo           4
+12        1       Sylvilagus           2
+13        1           Rodent           1
+14        1          Baiomys           1
+15        2        Dipodomys        1032
+16        2      Chaetodipus         358
+17        2        Onychomys         264
+18        2          Neotoma         201
+19        2       Peromyscus         182
+20        2  Reithrodontomys          73
+21        2         Sigmodon          23
+22        2      Perognathus          21
+23        2       Amphispiza          14
+24        2     Spermophilus           7
+25        2 Ammospermophilus           7
+26        2       Sylvilagus           3
+27        2           Rodent           1
+28        2           Pipilo           1
+29        2           Lizard           1
+30        2       Callipepla           1
+31        2      Calamospiza           1
+32        2          Baiomys           1
+33        3      Chaetodipus         715
+34        3        Onychomys         218
+35        3  Reithrodontomys         213
+36        3        Dipodomys         208
+37        3      Perognathus         131
+38        3       Peromyscus         108
+39        3          Neotoma          97
+40        3         Sigmodon          58
+41        3          Baiomys          19
+42        3     Spermophilus          17
+43        3       Amphispiza          10
+44        3       Sylvilagus           5
+45        3      Calamospiza           3
+46        3           Pipilo           2
+47        3 Ammospermophilus           2
+48        3  Campylorhynchus           1
+49        3       Callipepla           1
+50        4        Dipodomys        1417
+51        4      Chaetodipus         213
+52        4      Perognathus         136
+53        4        Onychomys         133
+54        4     Spermophilus          22
+55        4  Reithrodontomys          19
+56        4          Neotoma           6
+57        4       Peromyscus           5
+58        4       Amphispiza           3
+59        4         Sigmodon           2
+60        4 Ammospermophilus           2
+61        4           Pipilo           1
+62        4  Campylorhynchus           1
+63        5        Dipodomys         612
+64        5        Onychomys         185
+65        5  Reithrodontomys         112
+66        5       Peromyscus          85
+67        5      Chaetodipus          59
+68        5      Perognathus          41
+69        5          Neotoma          28
+70        5     Spermophilus          12
+71        5          Baiomys           4
+72        5         Sigmodon           3
+73        5 Ammospermophilus           3
+74        5       Callipepla           2
+75        5       Amphispiza           2
+76        5       Sylvilagus           1
+77        5  Campylorhynchus           1
+78        6        Dipodomys         553
+79        6      Chaetodipus         448
+80        6        Onychomys         196
+81        6      Perognathus         110
+82        6       Peromyscus          96
+83        6  Reithrodontomys          89
+84        6          Neotoma          17
+85        6       Amphispiza          17
+86        6     Spermophilus          15
+87        6         Sigmodon          10
+88        6 Ammospermophilus           6
+89        6           Rodent           1
+90        6        Pooecetes           1
+91        6           Pipilo           1
+92        6    Cnemidophorus           1
+93        6  Campylorhynchus           1
+94        7  Reithrodontomys         261
+95        7       Peromyscus         224
+96        7      Chaetodipus         137
+97        7 Ammospermophilus          26
+98        7        Dipodomys          24
+99        7       Amphispiza          23
+100       7        Onychomys          13
+101       7          Neotoma          12
+102       7  Campylorhynchus           4
+103       7     Spermophilus           1
+104       7           Rodent           1
+105       7           Pipilo           1
+106       7      Perognathus           1
+107       7    Cnemidophorus           1
+108       8        Dipodomys        1272
+109       8      Chaetodipus         322
+110       8        Onychomys         152
+111       8      Perognathus          56
+112       8       Peromyscus          18
+113       8     Spermophilus          15
+114       8  Reithrodontomys          13
+115       8 Ammospermophilus          12
+116       8          Neotoma           8
+117       8       Amphispiza           6
+118       8  Campylorhynchus           2
+119       8       Sylvilagus           1
+120       8           Rodent           1
+121       8           Pipilo           1
+122       8           Lizard           1
+123       8      Calamospiza           1
+124       9        Dipodomys        1474
+125       9        Onychomys         156
+126       9      Chaetodipus         123
+127       9      Perognathus          37
+128       9       Peromyscus          32
+129       9  Reithrodontomys          28
+130       9     Spermophilus          23
+131       9          Neotoma          23
+132       9 Ammospermophilus          16
+133       9       Amphispiza           9
+134       9         Sigmodon           3
+135       9           Pipilo           2
+136       9       Sylvilagus           1
+137       9  Campylorhynchus           1
+138       9      Calamospiza           1
+139      10  Reithrodontomys         180
+140      10       Peromyscus          68
+141      10        Onychomys          22
+142      10        Dipodomys          16
+143      10       Sylvilagus          10
+144      10     Spermophilus           7
+145      10       Amphispiza           6
+146      10           Pipilo           3
+147      10      Chaetodipus           3
+148      10         Sigmodon           2
+149      10          Neotoma           2
+150      10      Calamospiza           2
+151      10           Rodent           1
+152      10  Campylorhynchus           1
+153      10 Ammospermophilus           1
+154      11        Dipodomys        1256
+155      11      Chaetodipus         210
+156      11        Onychomys         171
+157      11  Reithrodontomys          72
+158      11       Peromyscus          68
+159      11          Neotoma          43
+160      11      Perognathus          33
+161      11         Sigmodon          18
+162      11     Spermophilus          14
+163      11 Ammospermophilus           7
+164      11       Sylvilagus           5
+165      11           Pipilo           4
+166      11           Rodent           3
+167      11          Sparrow           2
+168      11       Amphispiza           2
+169      11       Sceloporus           1
+170      11        Pooecetes           1
+171      11         Crotalus           1
+172      11  Campylorhynchus           1
+173      12        Dipodomys        1415
+174      12        Onychomys         264
+175      12      Chaetodipus         240
+176      12          Neotoma         166
+177      12  Reithrodontomys         103
+178      12       Peromyscus          63
+179      12       Amphispiza          28
+180      12      Perognathus          24
+181      12 Ammospermophilus          22
+182      12         Sigmodon          19
+183      12       Sylvilagus           8
+184      12     Spermophilus           8
+185      12        Pooecetes           1
+186      12           Pipilo           1
+187      12       Ammodramus           1
+188      13        Dipodomys         526
+189      13      Chaetodipus         357
+190      13        Onychomys         234
+191      13      Perognathus         103
+192      13       Peromyscus          94
+193      13  Reithrodontomys          76
+194      13          Neotoma          39
+195      13 Ammospermophilus          33
+196      13       Amphispiza          25
+197      13     Spermophilus          17
+198      13  Campylorhynchus          14
+199      13           Pipilo           8
+200      13         Sigmodon           2
+201      13       Sylvilagus           1
+202      13          Sparrow           1
+203      13           Lizard           1
+204      14        Dipodomys        1370
+205      14        Onychomys         182
+206      14      Chaetodipus          82
+207      14          Neotoma          62
+208      14       Peromyscus          40
+209      14 Ammospermophilus          37
+210      14  Reithrodontomys          36
+211      14      Perognathus          34
+212      14     Spermophilus          16
+213      14       Amphispiza           8
+214      14  Campylorhynchus           6
+215      14       Sylvilagus           4
+216      14           Pipilo           2
+217      14        Pooecetes           1
+218      15      Chaetodipus         285
+219      15      Perognathus         142
+220      15       Peromyscus         124
+221      15  Reithrodontomys         118
+222      15        Onychomys         102
+223      15 Ammospermophilus          90
+224      15        Dipodomys          75
+225      15          Neotoma          48
+226      15       Amphispiza          12
+227      15         Sigmodon           7
+228      15     Spermophilus           6
+229      15           Pipilo           5
+230      15  Campylorhynchus           4
+231      15       Sylvilagus           3
+232      15          Sparrow           1
+233      15         Crotalus           1
+234      15      Calamospiza           1
+235      16  Reithrodontomys         167
+236      16        Dipodomys         119
+237      16       Peromyscus         103
+238      16      Chaetodipus          69
+239      16        Onychomys          49
+240      16 Ammospermophilus          10
+241      16       Amphispiza           9
+242      16     Spermophilus           6
+243      16      Perognathus           4
+244      16          Neotoma           4
+245      16       Sylvilagus           3
+246      16  Campylorhynchus           3
+247      16       Callipepla           2
+248      16        Pooecetes           1
+249      17        Dipodomys        1255
+250      17        Onychomys         213
+251      17      Chaetodipus         178
+252      17          Neotoma         106
+253      17  Reithrodontomys          82
+254      17      Perognathus          66
+255      17       Peromyscus          61
+256      17 Ammospermophilus          34
+257      17     Spermophilus          16
+258      17         Sigmodon          15
+259      17       Sylvilagus           6
+260      17       Amphispiza           3
+261      17           Lizard           1
+262      17  Campylorhynchus           1
+263      18        Dipodomys         484
+264      18      Chaetodipus         359
+265      18      Perognathus         151
+266      18        Onychomys         124
+267      18  Reithrodontomys         122
+268      18       Peromyscus          91
+269      18          Neotoma          62
+270      18 Ammospermophilus          15
+271      18         Sigmodon          10
+272      18       Amphispiza           9
+273      18     Spermophilus           5
+274      18          Baiomys           2
+275      18      Zonotrichia           1
+276      18       Sylvilagus           1
+277      18           Rodent           1
+278      18        Pooecetes           1
+279      18      Calamospiza           1
+280      19      Chaetodipus         445
+281      19  Reithrodontomys         200
+282      19       Peromyscus         189
+283      19      Perognathus         141
+284      19        Onychomys          78
+285      19        Dipodomys          31
+286      19         Sigmodon          15
+287      19          Baiomys          15
+288      19       Amphispiza          11
+289      19 Ammospermophilus           9
+290      19       Sylvilagus           8
+291      19          Neotoma           3
+292      19     Spermophilus           2
+293      19       Sceloporus           1
+294      19           Pipilo           1
+295      19       Callipepla           1
+296      19       Ammodramus           1
+297      20        Dipodomys         430
+298      20      Chaetodipus         269
+299      20          Neotoma         134
+300      20  Reithrodontomys         126
+301      20      Perognathus         114
+302      20       Peromyscus         106
+303      20        Onychomys          92
+304      20       Amphispiza          37
+305      20 Ammospermophilus          35
+306      20     Spermophilus           7
+307      20         Sigmodon           7
+308      20           Pipilo           7
+309      20       Callipepla           4
+310      20  Campylorhynchus           3
+311      20       Sceloporus           2
+312      20          Baiomys           1
+313      21      Chaetodipus         486
+314      21  Reithrodontomys         204
+315      21      Perognathus         175
+316      21        Onychomys          92
+317      21        Dipodomys          44
+318      21       Peromyscus          38
+319      21         Sigmodon          30
+320      21 Ammospermophilus          19
+321      21          Neotoma          18
+322      21     Spermophilus          11
+323      21       Amphispiza           8
+324      21          Baiomys           3
+325      21        Pooecetes           2
+326      21      Calamospiza           2
+327      21       Sylvilagus           1
+328      21       Sceloporus           1
+329      21  Campylorhynchus           1
+330      22        Dipodomys         830
+331      22      Chaetodipus         299
+332      22        Onychomys         102
+333      22      Perognathus          65
+334      22       Peromyscus          27
+335      22          Neotoma          18
+336      22  Reithrodontomys          17
+337      22       Amphispiza          12
+338      22     Spermophilus           5
+339      22 Ammospermophilus           4
+340      22       Sylvilagus           2
+341      22  Campylorhynchus           2
+342      22         Sigmodon           1
+343      22       Sceloporus           1
+344      22           Pipilo           1
+345      22       Callipepla           1
+346      23  Reithrodontomys         194
+347      23       Peromyscus         115
+348      23        Dipodomys          35
+349      23       Amphispiza          26
+350      23 Ammospermophilus          23
+351      23        Onychomys          22
+352      23      Chaetodipus           9
+353      23       Sylvilagus           8
+354      23           Pipilo           6
+355      23      Perognathus           6
+356      23       Callipepla           4
+357      23  Campylorhynchus           3
+358      23          Neotoma           2
+359      23      Zonotrichia           1
+360      23         Sigmodon           1
+361      23      Calamospiza           1
+362      24        Dipodomys         359
+363      24       Peromyscus         269
+364      24  Reithrodontomys         165
+365      24          Neotoma          99
+366      24        Onychomys          50
+367      24      Chaetodipus          31
+368      24 Ammospermophilus          17
+369      24       Amphispiza          16
+370      24         Sigmodon           7
+371      24     Spermophilus           5
+372      24      Perognathus           4
+373      24       Sylvilagus           2
+374      24           Pipilo           1</code></pre>
+</div>
+</div>
+</section>
+<section id="question-9" class="level2">
+<h2 class="anchored" data-anchor-id="question-9">Question 9</h2>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb41"><pre class="sourceCode sql code-with-copy"><code class="sourceCode sql"><span id="cb41-1"><a href="#cb41-1" aria-hidden="true" tabindex="-1"></a><span class="kw">SELECT</span> p.plot_type,</span>
+<span id="cb41-2"><a href="#cb41-2" aria-hidden="true" tabindex="-1"></a>         sp.species_id,</span>
+<span id="cb41-3"><a href="#cb41-3" aria-hidden="true" tabindex="-1"></a>         sp.genus,</span>
+<span id="cb41-4"><a href="#cb41-4" aria-hidden="true" tabindex="-1"></a>         sp.species,</span>
+<span id="cb41-5"><a href="#cb41-5" aria-hidden="true" tabindex="-1"></a>         <span class="fu">COUNT</span>(<span class="op">*</span>) <span class="kw">AS</span> <span class="ot">"Number Captured"</span></span>
+<span id="cb41-6"><a href="#cb41-6" aria-hidden="true" tabindex="-1"></a><span class="kw">FROM</span> surveys s</span>
+<span id="cb41-7"><a href="#cb41-7" aria-hidden="true" tabindex="-1"></a><span class="kw">JOIN</span> plots   p  <span class="kw">ON</span> s.plot_id    <span class="op">=</span> p.plot_id</span>
+<span id="cb41-8"><a href="#cb41-8" aria-hidden="true" tabindex="-1"></a><span class="kw">JOIN</span> species sp <span class="kw">ON</span> s.species_id <span class="op">=</span> sp.species_id</span>
+<span id="cb41-9"><a href="#cb41-9" aria-hidden="true" tabindex="-1"></a><span class="kw">WHERE</span> sp.species <span class="op">!=</span> <span class="st">'sp.'</span> <span class="kw">AND</span> sp.species <span class="kw">IS</span> <span class="kw">NOT</span> <span class="kw">NULL</span></span>
+<span id="cb41-10"><a href="#cb41-10" aria-hidden="true" tabindex="-1"></a><span class="kw">GROUP</span> <span class="kw">BY</span> p.plot_type, sp.species_id, sp.genus, sp.species</span>
+<span id="cb41-11"><a href="#cb41-11" aria-hidden="true" tabindex="-1"></a><span class="kw">ORDER</span> <span class="kw">BY</span> p.plot_type, <span class="ot">"Number Captured"</span> <span class="kw">DESC</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Displaying records 1 - 10</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">plot_type</th>
+<th style="text-align: left;">species_id</th>
+<th style="text-align: left;">genus</th>
+<th style="text-align: left;">species</th>
+<th style="text-align: right;">Number Captured</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Control</td>
+<td style="text-align: left;">DM</td>
+<td style="text-align: left;">Dipodomys</td>
+<td style="text-align: left;">merriami</td>
+<td style="text-align: right;">6760</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Control</td>
+<td style="text-align: left;">DO</td>
+<td style="text-align: left;">Dipodomys</td>
+<td style="text-align: left;">ordii</td>
+<td style="text-align: right;">1671</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Control</td>
+<td style="text-align: left;">DS</td>
+<td style="text-align: left;">Dipodomys</td>
+<td style="text-align: left;">spectabilis</td>
+<td style="text-align: right;">1389</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Control</td>
+<td style="text-align: left;">PP</td>
+<td style="text-align: left;">Chaetodipus</td>
+<td style="text-align: left;">penicillatus</td>
+<td style="text-align: right;">1108</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Control</td>
+<td style="text-align: left;">OT</td>
+<td style="text-align: left;">Onychomys</td>
+<td style="text-align: left;">torridus</td>
+<td style="text-align: right;">1004</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Control</td>
+<td style="text-align: left;">PB</td>
+<td style="text-align: left;">Chaetodipus</td>
+<td style="text-align: left;">baileyi</td>
+<td style="text-align: right;">789</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Control</td>
+<td style="text-align: left;">NL</td>
+<td style="text-align: left;">Neotoma</td>
+<td style="text-align: left;">albigula</td>
+<td style="text-align: right;">610</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Control</td>
+<td style="text-align: left;">OL</td>
+<td style="text-align: left;">Onychomys</td>
+<td style="text-align: left;">leucogaster</td>
+<td style="text-align: right;">471</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Control</td>
+<td style="text-align: left;">PF</td>
+<td style="text-align: left;">Perognathus</td>
+<td style="text-align: left;">flavus</td>
+<td style="text-align: right;">424</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Control</td>
+<td style="text-align: left;">RM</td>
+<td style="text-align: left;">Reithrodontomys</td>
+<td style="text-align: left;">megalotis</td>
+<td style="text-align: right;">403</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<section id="question-10" class="level2">
+<h2 class="anchored" data-anchor-id="question-10">Question 10</h2>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb42"><pre class="sourceCode sql code-with-copy"><code class="sourceCode sql"><span id="cb42-1"><a href="#cb42-1" aria-hidden="true" tabindex="-1"></a><span class="kw">SELECT</span> sp.species_id,</span>
+<span id="cb42-2"><a href="#cb42-2" aria-hidden="true" tabindex="-1"></a>         sp.species,</span>
+<span id="cb42-3"><a href="#cb42-3" aria-hidden="true" tabindex="-1"></a>         <span class="fu">AVG</span>(s.weight) <span class="kw">AS</span> avg_weight</span>
+<span id="cb42-4"><a href="#cb42-4" aria-hidden="true" tabindex="-1"></a><span class="kw">FROM</span> surveys s</span>
+<span id="cb42-5"><a href="#cb42-5" aria-hidden="true" tabindex="-1"></a><span class="kw">JOIN</span> species sp <span class="kw">ON</span> s.species_id <span class="op">=</span> sp.species_id</span>
+<span id="cb42-6"><a href="#cb42-6" aria-hidden="true" tabindex="-1"></a><span class="kw">WHERE</span> sp.taxa <span class="op">=</span> <span class="st">'Rodent'</span> <span class="kw">AND</span> s.weight <span class="kw">IS</span> <span class="kw">NOT</span> <span class="kw">NULL</span></span>
+<span id="cb42-7"><a href="#cb42-7" aria-hidden="true" tabindex="-1"></a><span class="kw">GROUP</span> <span class="kw">BY</span> sp.species_id</span>
+<span id="cb42-8"><a href="#cb42-8" aria-hidden="true" tabindex="-1"></a><span class="kw">ORDER</span> <span class="kw">BY</span> avg_weight <span class="kw">DESC</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Displaying records 1 - 10</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">species_id</th>
+<th style="text-align: left;">species</th>
+<th style="text-align: right;">avg_weight</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">NL</td>
+<td style="text-align: left;">albigula</td>
+<td style="text-align: right;">159.24566</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">DS</td>
+<td style="text-align: left;">spectabilis</td>
+<td style="text-align: right;">120.13055</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">SS</td>
+<td style="text-align: left;">spilosoma</td>
+<td style="text-align: right;">93.50000</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">SH</td>
+<td style="text-align: left;">hispidus</td>
+<td style="text-align: right;">73.14894</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">SF</td>
+<td style="text-align: left;">fulviventer</td>
+<td style="text-align: right;">58.87805</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">SO</td>
+<td style="text-align: left;">ochrognathus</td>
+<td style="text-align: right;">55.41463</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">DO</td>
+<td style="text-align: left;">ordii</td>
+<td style="text-align: right;">48.87052</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">DM</td>
+<td style="text-align: left;">merriami</td>
+<td style="text-align: right;">43.15786</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">PB</td>
+<td style="text-align: left;">baileyi</td>
+<td style="text-align: right;">31.73594</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">OL</td>
+<td style="text-align: left;">leucogaster</td>
+<td style="text-align: right;">31.57526</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<section id="question-11" class="level2">
+<h2 class="anchored" data-anchor-id="question-11">Question 11</h2>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb43"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb43-1"><a href="#cb43-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ggplot2)</span>
+<span id="cb43-2"><a href="#cb43-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(plotly)</span>
+<span id="cb43-3"><a href="#cb43-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb43-4"><a href="#cb43-4" aria-hidden="true" tabindex="-1"></a>plot_subset <span class="ot">&lt;-</span> <span class="fu">subset</span>(genus_plot_counts, plot_id <span class="sc">%in%</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">5</span>)</span>
+<span id="cb43-5"><a href="#cb43-5" aria-hidden="true" tabindex="-1"></a>plot_subset<span class="sc">$</span>plot_id <span class="ot">&lt;-</span> <span class="fu">as.factor</span>(plot_subset<span class="sc">$</span>plot_id)</span>
+<span id="cb43-6"><a href="#cb43-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb43-7"><a href="#cb43-7" aria-hidden="true" tabindex="-1"></a>p <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(plot_subset, <span class="fu">aes</span>(<span class="at">x =</span> plot_id, <span class="at">y =</span> num_animals, <span class="at">fill =</span> genus)) <span class="sc">+</span></span>
+<span id="cb43-8"><a href="#cb43-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_bar</span>(<span class="at">stat =</span> <span class="st">"identity"</span>, <span class="at">position =</span> <span class="st">"dodge"</span>) <span class="sc">+</span></span>
+<span id="cb43-9"><a href="#cb43-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(</span>
+<span id="cb43-10"><a href="#cb43-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">title =</span> <span class="st">"Number of Animals Captured by Genus and Plot (Plots 1-5)"</span>,</span>
+<span id="cb43-11"><a href="#cb43-11" aria-hidden="true" tabindex="-1"></a>    <span class="at">x     =</span> <span class="st">"Plot ID"</span>,</span>
+<span id="cb43-12"><a href="#cb43-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">y     =</span> <span class="st">"Number of Animals"</span>,</span>
+<span id="cb43-13"><a href="#cb43-13" aria-hidden="true" tabindex="-1"></a>    <span class="at">fill  =</span> <span class="st">"Genus"</span></span>
+<span id="cb43-14"><a href="#cb43-14" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
+<span id="cb43-15"><a href="#cb43-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>()</span>
+<span id="cb43-16"><a href="#cb43-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb43-17"><a href="#cb43-17" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplotly</span>(p)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div class="plotly html-widget html-fill-item" id="htmlwidget-d446a4e4f8a4a7884cd8" style="width:100%;height:464px;"></div>
+<script type="application/json" data-for="htmlwidget-d446a4e4f8a4a7884cd8">{"x":{"data":[{"orientation":"v","width":[0.064285714285714279,0.049999999999999822,0.052941176470588047,0.069230769230768985,0.060000000000000497],"base":[0,0,0,0,0],"x":[0.58214285714285718,1.5750000000000002,2.5764705882352943,3.5846153846153848,4.5800000000000001],"y":[7,7,2,2,3],"text":["plot_id: 1<br />num_animals:    7<br />genus: Ammospermophilus","plot_id: 2<br />num_animals:    7<br />genus: Ammospermophilus","plot_id: 3<br />num_animals:    2<br />genus: Ammospermophilus","plot_id: 4<br />num_animals:    2<br />genus: Ammospermophilus","plot_id: 5<br />num_animals:    3<br />genus: Ammospermophilus"],"type":"bar","textposition":"none","marker":{"autocolorscale":false,"color":"rgba(248,118,109,1)","line":{"width":1.8897637795275593,"color":"transparent"}},"name":"Ammospermophilus","legendgroup":"Ammospermophilus","showlegend":true,"xaxis":"x","yaxis":"y","hoverinfo":"text","frame":null},{"orientation":"v","width":[0.064285714285714279,0.049999999999999822,0.052941176470588047,0.069230769230768985,0.060000000000000497],"base":[0,0,0,0,0],"x":[0.64642857142857146,1.625,2.6294117647058823,3.6538461538461537,4.6399999999999997],"y":[7,14,10,3,2],"text":["plot_id: 1<br />num_animals:    7<br />genus: Amphispiza","plot_id: 2<br />num_animals:   14<br />genus: Amphispiza","plot_id: 3<br />num_animals:   10<br />genus: Amphispiza","plot_id: 4<br />num_animals:    3<br />genus: Amphispiza","plot_id: 5<br />num_animals:    2<br />genus: Amphispiza"],"type":"bar","textposition":"none","marker":{"autocolorscale":false,"color":"rgba(233,132,44,1)","line":{"width":1.8897637795275593,"color":"transparent"}},"name":"Amphispiza","legendgroup":"Amphispiza","showlegend":true,"xaxis":"x","yaxis":"y","hoverinfo":"text","frame":null},{"orientation":"v","width":[0.064285714285714279,0.049999999999999822,0.052941176470588047,0.060000000000000497],"base":[0,0,0,0],"x":[0.71071428571428585,1.675,2.6823529411764708,4.7000000000000002],"y":[1,1,19,4],"text":["plot_id: 1<br />num_animals:    1<br />genus: Baiomys","plot_id: 2<br />num_animals:    1<br />genus: Baiomys","plot_id: 3<br />num_animals:   19<br />genus: Baiomys","plot_id: 5<br />num_animals:    4<br />genus: Baiomys"],"type":"bar","textposition":"none","marker":{"autocolorscale":false,"color":"rgba(214,145,0,1)","line":{"width":1.8897637795275593,"color":"transparent"}},"name":"Baiomys","legendgroup":"Baiomys","showlegend":true,"xaxis":"x","yaxis":"y","hoverinfo":"text","frame":null},{"orientation":"v","width":[0.049999999999999822,0.052941176470588047],"base":[0,0],"x":[1.7250000000000001,2.7352941176470589],"y":[1,3],"text":["plot_id: 2<br />num_animals:    1<br />genus: Calamospiza","plot_id: 3<br />num_animals:    3<br />genus: Calamospiza"],"type":"bar","textposition":"none","marker":{"autocolorscale":false,"color":"rgba(188,157,0,1)","line":{"width":1.8897637795275593,"color":"transparent"}},"name":"Calamospiza","legendgroup":"Calamospiza","showlegend":true,"xaxis":"x","yaxis":"y","hoverinfo":"text","frame":null},{"orientation":"v","width":[0.049999999999999822,0.052941176470588047,0.060000000000000497],"base":[0,0,0],"x":[1.7749999999999999,2.7882352941176469,4.7599999999999998],"y":[1,1,2],"text":["plot_id: 2<br />num_animals:    1<br />genus: Callipepla","plot_id: 3<br />num_animals:    1<br />genus: Callipepla","plot_id: 5<br />num_animals:    2<br />genus: Callipepla"],"type":"bar","textposition":"none","marker":{"autocolorscale":false,"color":"rgba(156,167,0,1)","line":{"width":1.8897637795275593,"color":"transparent"}},"name":"Callipepla","legendgroup":"Callipepla","showlegend":true,"xaxis":"x","yaxis":"y","hoverinfo":"text","frame":null},{"orientation":"v","width":[0.052941176470588047,0.069230769230768985,0.060000000000000497],"base":[0,0,0],"x":[2.8411764705882354,3.7230769230769232,4.8200000000000003],"y":[1,1,1],"text":["plot_id: 3<br />num_animals:    1<br />genus: Campylorhynchus","plot_id: 4<br />num_animals:    1<br />genus: Campylorhynchus","plot_id: 5<br />num_animals:    1<br />genus: Campylorhynchus"],"type":"bar","textposition":"none","marker":{"autocolorscale":false,"color":"rgba(111,176,0,1)","line":{"width":1.8897637795275593,"color":"transparent"}},"name":"Campylorhynchus","legendgroup":"Campylorhynchus","showlegend":true,"xaxis":"x","yaxis":"y","hoverinfo":"text","frame":null},{"orientation":"v","width":[0.064285714285714279,0.049999999999999822,0.052941176470588047,0.069230769230768985,0.060000000000000497],"base":[0,0,0,0,0],"x":[0.77500000000000002,1.825,2.8941176470588235,3.7923076923076922,4.8799999999999999],"y":[332,358,715,213,59],"text":["plot_id: 1<br />num_animals:  332<br />genus: Chaetodipus","plot_id: 2<br />num_animals:  358<br />genus: Chaetodipus","plot_id: 3<br />num_animals:  715<br />genus: Chaetodipus","plot_id: 4<br />num_animals:  213<br />genus: Chaetodipus","plot_id: 5<br />num_animals:   59<br />genus: Chaetodipus"],"type":"bar","textposition":"none","marker":{"autocolorscale":false,"color":"rgba(0,184,19,1)","line":{"width":1.8897637795275593,"color":"transparent"}},"name":"Chaetodipus","legendgroup":"Chaetodipus","showlegend":true,"xaxis":"x","yaxis":"y","hoverinfo":"text","frame":null},{"orientation":"v","width":[0.064285714285714279,0.049999999999999822,0.052941176470588047,0.069230769230768985,0.060000000000000497],"base":[0,0,0,0,0],"x":[0.8392857142857143,1.875,2.947058823529412,3.8615384615384616,4.9400000000000004],"y":[1330,1032,208,1417,612],"text":["plot_id: 1<br />num_animals: 1330<br />genus: Dipodomys","plot_id: 2<br />num_animals: 1032<br />genus: Dipodomys","plot_id: 3<br />num_animals:  208<br />genus: Dipodomys","plot_id: 4<br />num_animals: 1417<br />genus: Dipodomys","plot_id: 5<br />num_animals:  612<br />genus: Dipodomys"],"type":"bar","textposition":"none","marker":{"autocolorscale":false,"color":"rgba(0,189,97,1)","line":{"width":1.8897637795275593,"color":"transparent"}},"name":"Dipodomys","legendgroup":"Dipodomys","showlegend":true,"xaxis":"x","yaxis":"y","hoverinfo":"text","frame":null},{"orientation":"v","width":0.049999999999999822,"base":0,"x":[1.925],"y":[1],"text":"plot_id: 2<br />num_animals:    1<br />genus: Lizard","type":"bar","textposition":"none","marker":{"autocolorscale":false,"color":"rgba(0,192,142,1)","line":{"width":1.8897637795275593,"color":"transparent"}},"name":"Lizard","legendgroup":"Lizard","showlegend":true,"xaxis":"x","yaxis":"y","hoverinfo":"text","frame":null},{"orientation":"v","width":[0.064285714285714279,0.049999999999999822,0.052941176470588047,0.069230769230768985,0.060000000000000497],"base":[0,0,0,0,0],"x":[0.90357142857142858,1.9750000000000001,3,3.9307692307692306,5],"y":[54,201,97,6,28],"text":["plot_id: 1<br />num_animals:   54<br />genus: Neotoma","plot_id: 2<br />num_animals:  201<br />genus: Neotoma","plot_id: 3<br />num_animals:   97<br />genus: Neotoma","plot_id: 4<br />num_animals:    6<br />genus: Neotoma","plot_id: 5<br />num_animals:   28<br />genus: Neotoma"],"type":"bar","textposition":"none","marker":{"autocolorscale":false,"color":"rgba(0,192,180,1)","line":{"width":1.8897637795275593,"color":"transparent"}},"name":"Neotoma","legendgroup":"Neotoma","showlegend":true,"xaxis":"x","yaxis":"y","hoverinfo":"text","frame":null},{"orientation":"v","width":[0.064285714285714279,0.049999999999999822,0.052941176470588047,0.069230769230768985,0.060000000000000497],"base":[0,0,0,0,0],"x":[0.96785714285714286,2.0249999999999999,3.052941176470588,4,5.0599999999999996],"y":[153,264,218,133,185],"text":["plot_id: 1<br />num_animals:  153<br />genus: Onychomys","plot_id: 2<br />num_animals:  264<br />genus: Onychomys","plot_id: 3<br />num_animals:  218<br />genus: Onychomys","plot_id: 4<br />num_animals:  133<br />genus: Onychomys","plot_id: 5<br />num_animals:  185<br />genus: Onychomys"],"type":"bar","textposition":"none","marker":{"autocolorscale":false,"color":"rgba(0,189,212,1)","line":{"width":1.8897637795275593,"color":"transparent"}},"name":"Onychomys","legendgroup":"Onychomys","showlegend":true,"xaxis":"x","yaxis":"y","hoverinfo":"text","frame":null},{"orientation":"v","width":[0.064285714285714168,0.049999999999999822,0.052941176470588047,0.069230769230768985,0.060000000000000497],"base":[0,0,0,0,0],"x":[1.032142857142857,2.0750000000000002,3.1058823529411765,4.069230769230769,5.1200000000000001],"y":[34,21,131,136,41],"text":["plot_id: 1<br />num_animals:   34<br />genus: Perognathus","plot_id: 2<br />num_animals:   21<br />genus: Perognathus","plot_id: 3<br />num_animals:  131<br />genus: Perognathus","plot_id: 4<br />num_animals:  136<br />genus: Perognathus","plot_id: 5<br />num_animals:   41<br />genus: Perognathus"],"type":"bar","textposition":"none","marker":{"autocolorscale":false,"color":"rgba(0,181,238,1)","line":{"width":1.8897637795275593,"color":"transparent"}},"name":"Perognathus","legendgroup":"Perognathus","showlegend":true,"xaxis":"x","yaxis":"y","hoverinfo":"text","frame":null},{"orientation":"v","width":[0.064285714285714501,0.049999999999999822,0.052941176470588047,0.069230769230768985,0.060000000000000497],"base":[0,0,0,0,0],"x":[1.0964285714285713,2.125,3.1588235294117646,4.1384615384615389,5.1799999999999997],"y":[28,182,108,5,85],"text":["plot_id: 1<br />num_animals:   28<br />genus: Peromyscus","plot_id: 2<br />num_animals:  182<br />genus: Peromyscus","plot_id: 3<br />num_animals:  108<br />genus: Peromyscus","plot_id: 4<br />num_animals:    5<br />genus: Peromyscus","plot_id: 5<br />num_animals:   85<br />genus: Peromyscus"],"type":"bar","textposition":"none","marker":{"autocolorscale":false,"color":"rgba(0,167,255,1)","line":{"width":1.8897637795275593,"color":"transparent"}},"name":"Peromyscus","legendgroup":"Peromyscus","showlegend":true,"xaxis":"x","yaxis":"y","hoverinfo":"text","frame":null},{"orientation":"v","width":[0.064285714285714501,0.049999999999999822,0.052941176470588047,0.069230769230768985],"base":[0,0,0,0],"x":[1.1607142857142858,2.1749999999999998,3.2117647058823531,4.2076923076923078],"y":[4,1,2,1],"text":["plot_id: 1<br />num_animals:    4<br />genus: Pipilo","plot_id: 2<br />num_animals:    1<br />genus: Pipilo","plot_id: 3<br />num_animals:    2<br />genus: Pipilo","plot_id: 4<br />num_animals:    1<br />genus: Pipilo"],"type":"bar","textposition":"none","marker":{"autocolorscale":false,"color":"rgba(127,150,255,1)","line":{"width":1.8897637795275593,"color":"transparent"}},"name":"Pipilo","legendgroup":"Pipilo","showlegend":true,"xaxis":"x","yaxis":"y","hoverinfo":"text","frame":null},{"orientation":"v","width":[0.064285714285714057,0.049999999999999822,0.052941176470588047,0.069230769230768985,0.060000000000000497],"base":[0,0,0,0,0],"x":[1.2250000000000001,2.2250000000000001,3.2647058823529411,4.2769230769230768,5.2400000000000002],"y":[24,73,213,19,112],"text":["plot_id: 1<br />num_animals:   24<br />genus: Reithrodontomys","plot_id: 2<br />num_animals:   73<br />genus: Reithrodontomys","plot_id: 3<br />num_animals:  213<br />genus: Reithrodontomys","plot_id: 4<br />num_animals:   19<br />genus: Reithrodontomys","plot_id: 5<br />num_animals:  112<br />genus: Reithrodontomys"],"type":"bar","textposition":"none","marker":{"autocolorscale":false,"color":"rgba(188,129,255,1)","line":{"width":1.8897637795275593,"color":"transparent"}},"name":"Reithrodontomys","legendgroup":"Reithrodontomys","showlegend":true,"xaxis":"x","yaxis":"y","hoverinfo":"text","frame":null},{"orientation":"v","width":[0.064285714285714057,0.049999999999999822],"base":[0,0],"x":[1.2892857142857141,2.2749999999999999],"y":[1,1],"text":["plot_id: 1<br />num_animals:    1<br />genus: Rodent","plot_id: 2<br />num_animals:    1<br />genus: Rodent"],"type":"bar","textposition":"none","marker":{"autocolorscale":false,"color":"rgba(226,110,247,1)","line":{"width":1.8897637795275593,"color":"transparent"}},"name":"Rodent","legendgroup":"Rodent","showlegend":true,"xaxis":"x","yaxis":"y","hoverinfo":"text","frame":null},{"orientation":"v","width":[0.049999999999999822,0.052941176470588047,0.069230769230768985,0.060000000000000497],"base":[0,0,0,0],"x":[2.3250000000000002,3.3176470588235292,4.3461538461538458,5.2999999999999998],"y":[23,58,2,3],"text":["plot_id: 2<br />num_animals:   23<br />genus: Sigmodon","plot_id: 3<br />num_animals:   58<br />genus: Sigmodon","plot_id: 4<br />num_animals:    2<br />genus: Sigmodon","plot_id: 5<br />num_animals:    3<br />genus: Sigmodon"],"type":"bar","textposition":"none","marker":{"autocolorscale":false,"color":"rgba(247,99,223,1)","line":{"width":1.8897637795275593,"color":"transparent"}},"name":"Sigmodon","legendgroup":"Sigmodon","showlegend":true,"xaxis":"x","yaxis":"y","hoverinfo":"text","frame":null},{"orientation":"v","width":[0.064285714285714057,0.049999999999999822,0.052941176470588047,0.069230769230768985,0.060000000000000497],"base":[0,0,0,0,0],"x":[1.3535714285714286,2.375,3.3705882352941177,4.4153846153846157,5.3600000000000003],"y":[12,7,17,22,12],"text":["plot_id: 1<br />num_animals:   12<br />genus: Spermophilus","plot_id: 2<br />num_animals:    7<br />genus: Spermophilus","plot_id: 3<br />num_animals:   17<br />genus: Spermophilus","plot_id: 4<br />num_animals:   22<br />genus: Spermophilus","plot_id: 5<br />num_animals:   12<br />genus: Spermophilus"],"type":"bar","textposition":"none","marker":{"autocolorscale":false,"color":"rgba(255,98,191,1)","line":{"width":1.8897637795275593,"color":"transparent"}},"name":"Spermophilus","legendgroup":"Spermophilus","showlegend":true,"xaxis":"x","yaxis":"y","hoverinfo":"text","frame":null},{"orientation":"v","width":[0.064285714285714057,0.049999999999999822,0.052941176470588047,0.060000000000000497],"base":[0,0,0,0],"x":[1.4178571428571427,2.4249999999999998,3.4235294117647057,5.4199999999999999],"y":[2,3,5,1],"text":["plot_id: 1<br />num_animals:    2<br />genus: Sylvilagus","plot_id: 2<br />num_animals:    3<br />genus: Sylvilagus","plot_id: 3<br />num_animals:    5<br />genus: Sylvilagus","plot_id: 5<br />num_animals:    1<br />genus: Sylvilagus"],"type":"bar","textposition":"none","marker":{"autocolorscale":false,"color":"rgba(255,106,154,1)","line":{"width":1.8897637795275593,"color":"transparent"}},"name":"Sylvilagus","legendgroup":"Sylvilagus","showlegend":true,"xaxis":"x","yaxis":"y","hoverinfo":"text","frame":null}],"layout":{"margin":{"t":40.840182648401829,"r":7.3059360730593621,"b":37.260273972602747,"l":48.949771689497723},"paper_bgcolor":"rgba(255,255,255,1)","font":{"color":"rgba(0,0,0,1)","family":"","size":14.611872146118724},"title":{"text":"Number of Animals Captured by Genus and Plot (Plots 1-5)","font":{"color":"rgba(0,0,0,1)","family":"","size":17.534246575342465},"x":0,"xref":"paper"},"xaxis":{"domain":[0,1],"automargin":true,"type":"linear","autorange":false,"range":[0.40000000000000002,5.5999999999999996],"tickmode":"array","ticktext":["1","2","3","4","5"],"tickvals":[1,2,3,4,5],"categoryorder":"array","categoryarray":["1","2","3","4","5"],"nticks":null,"ticks":"","tickcolor":null,"ticklen":3.6529680365296811,"tickwidth":0,"showticklabels":true,"tickfont":{"color":"rgba(77,77,77,1)","family":"","size":11.68949771689498},"tickangle":-0,"showline":false,"linecolor":null,"linewidth":0,"showgrid":true,"gridcolor":"rgba(235,235,235,1)","gridwidth":0.66417600664176002,"zeroline":false,"anchor":"y","title":{"text":"Plot ID","font":{"color":"rgba(0,0,0,1)","family":"","size":14.611872146118724}},"hoverformat":".2f"},"yaxis":{"domain":[0,1],"automargin":true,"type":"linear","autorange":false,"range":[-70.850000000000009,1487.8499999999999],"tickmode":"array","ticktext":["0","500","1000"],"tickvals":[0,500,999.99999999999989],"categoryorder":"array","categoryarray":["0","500","1000"],"nticks":null,"ticks":"","tickcolor":null,"ticklen":3.6529680365296811,"tickwidth":0,"showticklabels":true,"tickfont":{"color":"rgba(77,77,77,1)","family":"","size":11.68949771689498},"tickangle":-0,"showline":false,"linecolor":null,"linewidth":0,"showgrid":true,"gridcolor":"rgba(235,235,235,1)","gridwidth":0.66417600664176002,"zeroline":false,"anchor":"x","title":{"text":"Number of Animals","font":{"color":"rgba(0,0,0,1)","family":"","size":14.611872146118724}},"hoverformat":".2f"},"shapes":[],"showlegend":true,"legend":{"bgcolor":null,"bordercolor":null,"borderwidth":0,"font":{"color":"rgba(0,0,0,1)","family":"","size":11.68949771689498},"title":{"text":"Genus","font":{"color":"rgba(0,0,0,1)","family":"","size":14.611872146118724}}},"hovermode":"closest","barmode":"relative"},"config":{"doubleClick":"reset","modeBarButtonsToAdd":["hoverclosest","hovercompare"],"showSendToCloud":false},"source":"A","attrs":{"6f141b42928":{"x":{},"y":{},"fill":{},"type":"bar"}},"cur_data":"6f141b42928","visdat":{"6f141b42928":["function (y) ","x"]},"highlight":{"on":"plotly_click","persistent":false,"dynamic":false,"selectize":false,"opacityDim":0.20000000000000001,"selected":{"opacity":1},"debounce":0},"shinyEvents":["plotly_hover","plotly_click","plotly_selected","plotly_relayout","plotly_brushed","plotly_brushing","plotly_clickannotation","plotly_doubleclick","plotly_deselect","plotly_afterplot","plotly_sunburstclick"],"base_url":"https://plot.ly"},"evals":[],"jsHooks":[]}</script>
+</div>
+</div>
+</section>
+<section id="question-12" class="level2">
+<h2 class="anchored" data-anchor-id="question-12">Question 12</h2>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb44"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb44-1"><a href="#cb44-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(dplyr)</span>
+<span id="cb44-2"><a href="#cb44-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb44-3"><a href="#cb44-3" aria-hidden="true" tabindex="-1"></a>smoothed <span class="ot">&lt;-</span> yearly_species_summary <span class="sc">%&gt;%</span></span>
+<span id="cb44-4"><a href="#cb44-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(avg_weight)) <span class="sc">%&gt;%</span></span>
+<span id="cb44-5"><a href="#cb44-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(species_id) <span class="sc">%&gt;%</span></span>
+<span id="cb44-6"><a href="#cb44-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(year) <span class="sc">%&gt;%</span></span>
+<span id="cb44-7"><a href="#cb44-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">smooth_weight =</span> zoo<span class="sc">::</span><span class="fu">rollmean</span>(avg_weight, <span class="at">k =</span> <span class="dv">3</span>, <span class="at">fill =</span> <span class="cn">NA</span>, <span class="at">align =</span> <span class="st">"center"</span>)) <span class="sc">%&gt;%</span></span>
+<span id="cb44-8"><a href="#cb44-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(smooth_weight)) <span class="sc">%&gt;%</span></span>
+<span id="cb44-9"><a href="#cb44-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ungroup</span>()</span>
+<span id="cb44-10"><a href="#cb44-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb44-11"><a href="#cb44-11" aria-hidden="true" tabindex="-1"></a><span class="fu">plot_ly</span>(</span>
+<span id="cb44-12"><a href="#cb44-12" aria-hidden="true" tabindex="-1"></a>  <span class="at">data   =</span> smoothed,</span>
+<span id="cb44-13"><a href="#cb44-13" aria-hidden="true" tabindex="-1"></a>  <span class="at">x      =</span> <span class="sc">~</span>year,</span>
+<span id="cb44-14"><a href="#cb44-14" aria-hidden="true" tabindex="-1"></a>  <span class="at">y      =</span> <span class="sc">~</span>smooth_weight,</span>
+<span id="cb44-15"><a href="#cb44-15" aria-hidden="true" tabindex="-1"></a>  <span class="at">color  =</span> <span class="sc">~</span>species_id,</span>
+<span id="cb44-16"><a href="#cb44-16" aria-hidden="true" tabindex="-1"></a>  <span class="at">type   =</span> <span class="st">"scatter"</span>,</span>
+<span id="cb44-17"><a href="#cb44-17" aria-hidden="true" tabindex="-1"></a>  <span class="at">mode   =</span> <span class="st">"lines"</span>,</span>
+<span id="cb44-18"><a href="#cb44-18" aria-hidden="true" tabindex="-1"></a>  <span class="at">text   =</span> <span class="sc">~</span><span class="fu">paste</span>(<span class="st">"Species:"</span>, species_id,</span>
+<span id="cb44-19"><a href="#cb44-19" aria-hidden="true" tabindex="-1"></a>                  <span class="st">"&lt;br&gt;Year:"</span>, year,</span>
+<span id="cb44-20"><a href="#cb44-20" aria-hidden="true" tabindex="-1"></a>                  <span class="st">"&lt;br&gt;Avg Weight (smoothed):"</span>, <span class="fu">round</span>(smooth_weight, <span class="dv">2</span>)),</span>
+<span id="cb44-21"><a href="#cb44-21" aria-hidden="true" tabindex="-1"></a>  <span class="at">hoverinfo =</span> <span class="st">"text"</span></span>
+<span id="cb44-22"><a href="#cb44-22" aria-hidden="true" tabindex="-1"></a>) <span class="sc">%&gt;%</span></span>
+<span id="cb44-23"><a href="#cb44-23" aria-hidden="true" tabindex="-1"></a>  <span class="fu">layout</span>(</span>
+<span id="cb44-24"><a href="#cb44-24" aria-hidden="true" tabindex="-1"></a>    <span class="at">title =</span> <span class="fu">list</span>(<span class="at">text =</span> <span class="st">"Average Weight Over Time by Species (3-Year Rolling Mean)"</span>),</span>
+<span id="cb44-25"><a href="#cb44-25" aria-hidden="true" tabindex="-1"></a>    <span class="at">xaxis =</span> <span class="fu">list</span>(<span class="at">title =</span> <span class="st">"Year"</span>),</span>
+<span id="cb44-26"><a href="#cb44-26" aria-hidden="true" tabindex="-1"></a>    <span class="at">yaxis =</span> <span class="fu">list</span>(<span class="at">title =</span> <span class="st">"Average Weight (g)"</span>),</span>
+<span id="cb44-27"><a href="#cb44-27" aria-hidden="true" tabindex="-1"></a>    <span class="at">legend =</span> <span class="fu">list</span>(<span class="at">title =</span> <span class="fu">list</span>(<span class="at">text =</span> <span class="st">"Species"</span>)),</span>
+<span id="cb44-28"><a href="#cb44-28" aria-hidden="true" tabindex="-1"></a>    <span class="at">hovermode =</span> <span class="st">"closest"</span></span>
+<span id="cb44-29"><a href="#cb44-29" aria-hidden="true" tabindex="-1"></a>  )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning in RColorBrewer::brewer.pal(max(N, 3L), "Set2"): n too large, allowed maximum for palette Set2 is 8
+Returning the palette you asked for with that many colors
+Warning in RColorBrewer::brewer.pal(max(N, 3L), "Set2"): n too large, allowed maximum for palette Set2 is 8
+Returning the palette you asked for with that many colors</code></pre>
+</div>
+<div class="cell-output-display">
+<div class="plotly html-widget html-fill-item" id="htmlwidget-bb42bbff64ce4a03ba46" style="width:100%;height:464px;"></div>
+<script type="application/json" data-for="htmlwidget-bb42bbff64ce4a03ba46">{"x":{"visdat":{"6f146a3f53a5":["function () ","plotlyVisDat"]},"cur_data":"6f146a3f53a5","attrs":{"6f146a3f53a5":{"x":{},"y":{},"mode":"lines","text":{},"hoverinfo":"text","color":{},"alpha_stroke":1,"sizes":[10,100],"spans":[1,20],"type":"scatter"}},"layout":{"margin":{"b":40,"l":60,"t":25,"r":10},"title":{"text":"Average Weight Over Time by Species (3-Year Rolling Mean)"},"xaxis":{"domain":[0,1],"automargin":true,"title":"Year"},"yaxis":{"domain":[0,1],"automargin":true,"title":"Average Weight (g)"},"legend":{"title":{"text":"Species"}},"hovermode":"closest","showlegend":true},"source":"A","config":{"modeBarButtonsToAdd":["hoverclosest","hovercompare"],"showSendToCloud":false},"data":[{"x":[1990,1991],"y":[8.0800000000000001,8.3577777777777786],"mode":"lines","text":["Species: BA <br>Year: 1990 <br>Avg Weight (smoothed): 8.08","Species: BA <br>Year: 1991 <br>Avg Weight (smoothed): 8.36"],"hoverinfo":["text","text"],"type":"scatter","name":"BA","marker":{"color":"rgba(102,194,165,1)","line":{"color":"rgba(102,194,165,1)"}},"textfont":{"color":"rgba(102,194,165,1)"},"error_y":{"color":"rgba(102,194,165,1)"},"error_x":{"color":"rgba(102,194,165,1)"},"line":{"color":"rgba(102,194,165,1)"},"xaxis":"x","yaxis":"y","frame":null},{"x":[1978,1979,1980,1981,1982,1983,1984,1985,1986,1987,1988,1989,1990,1991,1992,1993,1994,1995,1996,1997,1998,1999,2000,2001],"y":[41.814691988817124,42.812951364284025,43.892102103855244,43.381343611910921,42.317499676907339,41.228299463000937,41.072500683867958,41.878182464120961,42.700616655188696,43.330664920291952,43.659868366702376,43.172302636293246,43.089151816513017,42.932071734009206,43.466762479146745,43.208412504255058,43.517805994391431,43.895202360947685,44.673623631676925,44.115375813655618,43.92845230010375,43.40114765715861,44.171405574728006,44.912377085672205],"mode":"lines","text":["Species: DM <br>Year: 1978 <br>Avg Weight (smoothed): 41.81","Species: DM <br>Year: 1979 <br>Avg Weight (smoothed): 42.81","Species: DM <br>Year: 1980 <br>Avg Weight (smoothed): 43.89","Species: DM <br>Year: 1981 <br>Avg Weight (smoothed): 43.38","Species: DM <br>Year: 1982 <br>Avg Weight (smoothed): 42.32","Species: DM <br>Year: 1983 <br>Avg Weight (smoothed): 41.23","Species: DM <br>Year: 1984 <br>Avg Weight (smoothed): 41.07","Species: DM <br>Year: 1985 <br>Avg Weight (smoothed): 41.88","Species: DM <br>Year: 1986 <br>Avg Weight (smoothed): 42.7","Species: DM <br>Year: 1987 <br>Avg Weight (smoothed): 43.33","Species: DM <br>Year: 1988 <br>Avg Weight (smoothed): 43.66","Species: DM <br>Year: 1989 <br>Avg Weight (smoothed): 43.17","Species: DM <br>Year: 1990 <br>Avg Weight (smoothed): 43.09","Species: DM <br>Year: 1991 <br>Avg Weight (smoothed): 42.93","Species: DM <br>Year: 1992 <br>Avg Weight (smoothed): 43.47","Species: DM <br>Year: 1993 <br>Avg Weight (smoothed): 43.21","Species: DM <br>Year: 1994 <br>Avg Weight (smoothed): 43.52","Species: DM <br>Year: 1995 <br>Avg Weight (smoothed): 43.9","Species: DM <br>Year: 1996 <br>Avg Weight (smoothed): 44.67","Species: DM <br>Year: 1997 <br>Avg Weight (smoothed): 44.12","Species: DM <br>Year: 1998 <br>Avg Weight (smoothed): 43.93","Species: DM <br>Year: 1999 <br>Avg Weight (smoothed): 43.4","Species: DM <br>Year: 2000 <br>Avg Weight (smoothed): 44.17","Species: DM <br>Year: 2001 <br>Avg Weight (smoothed): 44.91"],"hoverinfo":["text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text"],"type":"scatter","name":"DM","marker":{"color":"rgba(172,179,141,1)","line":{"color":"rgba(172,179,141,1)"}},"textfont":{"color":"rgba(172,179,141,1)"},"error_y":{"color":"rgba(172,179,141,1)"},"error_x":{"color":"rgba(172,179,141,1)"},"line":{"color":"rgba(172,179,141,1)"},"xaxis":"x","yaxis":"y","frame":null},{"x":[1978,1979,1980,1981,1982,1983,1984,1985,1986,1987,1988,1989,1990,1991,1992,1993,1994,1995,1996,1997,1998,1999,2000,2001],"y":[44.509578544061299,46.306964164976335,47.677334535346709,48.363192499221917,48.060452125964169,47.828446535468011,47.840809172830653,48.581517460526889,49.138945560911573,50.30795800981533,50.858929260786589,50.333819111451383,49.74444713077505,48.858505486212721,48.841668909135173,48.193118184497486,48.601377018043685,48.192510783876251,48.335132654758979,48.381329389127757,48.640365533706074,48.989316696531205,49.823511175886971,50.324296209023629],"mode":"lines","text":["Species: DO <br>Year: 1978 <br>Avg Weight (smoothed): 44.51","Species: DO <br>Year: 1979 <br>Avg Weight (smoothed): 46.31","Species: DO <br>Year: 1980 <br>Avg Weight (smoothed): 47.68","Species: DO <br>Year: 1981 <br>Avg Weight (smoothed): 48.36","Species: DO <br>Year: 1982 <br>Avg Weight (smoothed): 48.06","Species: DO <br>Year: 1983 <br>Avg Weight (smoothed): 47.83","Species: DO <br>Year: 1984 <br>Avg Weight (smoothed): 47.84","Species: DO <br>Year: 1985 <br>Avg Weight (smoothed): 48.58","Species: DO <br>Year: 1986 <br>Avg Weight (smoothed): 49.14","Species: DO <br>Year: 1987 <br>Avg Weight (smoothed): 50.31","Species: DO <br>Year: 1988 <br>Avg Weight (smoothed): 50.86","Species: DO <br>Year: 1989 <br>Avg Weight (smoothed): 50.33","Species: DO <br>Year: 1990 <br>Avg Weight (smoothed): 49.74","Species: DO <br>Year: 1991 <br>Avg Weight (smoothed): 48.86","Species: DO <br>Year: 1992 <br>Avg Weight (smoothed): 48.84","Species: DO <br>Year: 1993 <br>Avg Weight (smoothed): 48.19","Species: DO <br>Year: 1994 <br>Avg Weight (smoothed): 48.6","Species: DO <br>Year: 1995 <br>Avg Weight (smoothed): 48.19","Species: DO <br>Year: 1996 <br>Avg Weight (smoothed): 48.34","Species: DO <br>Year: 1997 <br>Avg Weight (smoothed): 48.38","Species: DO <br>Year: 1998 <br>Avg Weight (smoothed): 48.64","Species: DO <br>Year: 1999 <br>Avg Weight (smoothed): 48.99","Species: DO <br>Year: 2000 <br>Avg Weight (smoothed): 49.82","Species: DO <br>Year: 2001 <br>Avg Weight (smoothed): 50.32"],"hoverinfo":["text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text"],"type":"scatter","name":"DO","marker":{"color":"rgba(219,161,118,1)","line":{"color":"rgba(219,161,118,1)"}},"textfont":{"color":"rgba(219,161,118,1)"},"error_y":{"color":"rgba(219,161,118,1)"},"error_x":{"color":"rgba(219,161,118,1)"},"line":{"color":"rgba(219,161,118,1)"},"xaxis":"x","yaxis":"y","frame":null},{"x":[1978,1979,1980,1981,1982,1983,1984,1985,1986,1987,1988,1989,1990,1991,1992,1993,1994,1997,1998],"y":[116.14436917112467,115.90709041006272,119.44702061185653,120.73067883831054,121.16648701113718,120.58773633673296,123.48053193519657,125.49331204724139,126.26052758158022,127.98194433100093,125.92365204857072,124.19153925395794,118.69468390804597,115.51348039215686,110.35838779956428,108.23338779956428,107.7824074074074,111.20833333333333,115.90476190476191],"mode":"lines","text":["Species: DS <br>Year: 1978 <br>Avg Weight (smoothed): 116.14","Species: DS <br>Year: 1979 <br>Avg Weight (smoothed): 115.91","Species: DS <br>Year: 1980 <br>Avg Weight (smoothed): 119.45","Species: DS <br>Year: 1981 <br>Avg Weight (smoothed): 120.73","Species: DS <br>Year: 1982 <br>Avg Weight (smoothed): 121.17","Species: DS <br>Year: 1983 <br>Avg Weight (smoothed): 120.59","Species: DS <br>Year: 1984 <br>Avg Weight (smoothed): 123.48","Species: DS <br>Year: 1985 <br>Avg Weight (smoothed): 125.49","Species: DS <br>Year: 1986 <br>Avg Weight (smoothed): 126.26","Species: DS <br>Year: 1987 <br>Avg Weight (smoothed): 127.98","Species: DS <br>Year: 1988 <br>Avg Weight (smoothed): 125.92","Species: DS <br>Year: 1989 <br>Avg Weight (smoothed): 124.19","Species: DS <br>Year: 1990 <br>Avg Weight (smoothed): 118.69","Species: DS <br>Year: 1991 <br>Avg Weight (smoothed): 115.51","Species: DS <br>Year: 1992 <br>Avg Weight (smoothed): 110.36","Species: DS <br>Year: 1993 <br>Avg Weight (smoothed): 108.23","Species: DS <br>Year: 1994 <br>Avg Weight (smoothed): 107.78","Species: DS <br>Year: 1997 <br>Avg Weight (smoothed): 111.21","Species: DS <br>Year: 1998 <br>Avg Weight (smoothed): 115.9"],"hoverinfo":["text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text"],"type":"scatter","name":"DS","marker":{"color":"rgba(248,142,103,1)","line":{"color":"rgba(248,142,103,1)"}},"textfont":{"color":"rgba(248,142,103,1)"},"error_y":{"color":"rgba(248,142,103,1)"},"error_x":{"color":"rgba(248,142,103,1)"},"line":{"color":"rgba(248,142,103,1)"},"xaxis":"x","yaxis":"y","frame":null},{"x":[1979,1980,1981,1982,1983,1984,1985,1986,1987,1988,1989,1990,1991,1992,1993,1994,1995,1996,1997,1998,1999,2000,2001],"y":[160.54613095238096,154.29512288786484,161.83285873692145,161.06930757177454,155.79997833470335,151.87199858320773,152.88288143965187,155.79780207457247,160.55610153256706,157.74095173041894,156.21957242007412,151.44675495975665,147.35385878489328,138.39233954451348,151.08876811594203,156.69987922705317,163.56944444444446,151.50740740740741,152.71851851851852,164.11851851851853,173.65811965811966,176.45291871249319,176.43928234885684],"mode":"lines","text":["Species: NL <br>Year: 1979 <br>Avg Weight (smoothed): 160.55","Species: NL <br>Year: 1980 <br>Avg Weight (smoothed): 154.3","Species: NL <br>Year: 1981 <br>Avg Weight (smoothed): 161.83","Species: NL <br>Year: 1982 <br>Avg Weight (smoothed): 161.07","Species: NL <br>Year: 1983 <br>Avg Weight (smoothed): 155.8","Species: NL <br>Year: 1984 <br>Avg Weight (smoothed): 151.87","Species: NL <br>Year: 1985 <br>Avg Weight (smoothed): 152.88","Species: NL <br>Year: 1986 <br>Avg Weight (smoothed): 155.8","Species: NL <br>Year: 1987 <br>Avg Weight (smoothed): 160.56","Species: NL <br>Year: 1988 <br>Avg Weight (smoothed): 157.74","Species: NL <br>Year: 1989 <br>Avg Weight (smoothed): 156.22","Species: NL <br>Year: 1990 <br>Avg Weight (smoothed): 151.45","Species: NL <br>Year: 1991 <br>Avg Weight (smoothed): 147.35","Species: NL <br>Year: 1992 <br>Avg Weight (smoothed): 138.39","Species: NL <br>Year: 1993 <br>Avg Weight (smoothed): 151.09","Species: NL <br>Year: 1994 <br>Avg Weight (smoothed): 156.7","Species: NL <br>Year: 1995 <br>Avg Weight (smoothed): 163.57","Species: NL <br>Year: 1996 <br>Avg Weight (smoothed): 151.51","Species: NL <br>Year: 1997 <br>Avg Weight (smoothed): 152.72","Species: NL <br>Year: 1998 <br>Avg Weight (smoothed): 164.12","Species: NL <br>Year: 1999 <br>Avg Weight (smoothed): 173.66","Species: NL <br>Year: 2000 <br>Avg Weight (smoothed): 176.45","Species: NL <br>Year: 2001 <br>Avg Weight (smoothed): 176.44"],"hoverinfo":["text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text"],"type":"scatter","name":"NL","marker":{"color":"rgba(217,150,141,1)","line":{"color":"rgba(217,150,141,1)"}},"textfont":{"color":"rgba(217,150,141,1)"},"error_y":{"color":"rgba(217,150,141,1)"},"error_x":{"color":"rgba(217,150,141,1)"},"line":{"color":"rgba(217,150,141,1)"},"xaxis":"x","yaxis":"y","frame":null},{"x":[1978,1979,1980,1981,1982,1983,1984,1985,1986,1987,1988,1989,1990,1991,1992,1993,1994,1995,1996,1997],"y":[28.803694999347176,32.617187062839243,33.37361015259566,33.997933533074097,34.490424375564942,34.241900489359892,33.081345224823487,31.846790890269151,31.256289604115693,30.655431869717585,31.010903883084335,31.151163623344075,30.439598997493736,29.275324675324679,28.05714285714286,25.966666666666669,25.580583613916946,25.655175688509022,29.563509021842361,28.940934065934069],"mode":"lines","text":["Species: OL <br>Year: 1978 <br>Avg Weight (smoothed): 28.8","Species: OL <br>Year: 1979 <br>Avg Weight (smoothed): 32.62","Species: OL <br>Year: 1980 <br>Avg Weight (smoothed): 33.37","Species: OL <br>Year: 1981 <br>Avg Weight (smoothed): 34","Species: OL <br>Year: 1982 <br>Avg Weight (smoothed): 34.49","Species: OL <br>Year: 1983 <br>Avg Weight (smoothed): 34.24","Species: OL <br>Year: 1984 <br>Avg Weight (smoothed): 33.08","Species: OL <br>Year: 1985 <br>Avg Weight (smoothed): 31.85","Species: OL <br>Year: 1986 <br>Avg Weight (smoothed): 31.26","Species: OL <br>Year: 1987 <br>Avg Weight (smoothed): 30.66","Species: OL <br>Year: 1988 <br>Avg Weight (smoothed): 31.01","Species: OL <br>Year: 1989 <br>Avg Weight (smoothed): 31.15","Species: OL <br>Year: 1990 <br>Avg Weight (smoothed): 30.44","Species: OL <br>Year: 1991 <br>Avg Weight (smoothed): 29.28","Species: OL <br>Year: 1992 <br>Avg Weight (smoothed): 28.06","Species: OL <br>Year: 1993 <br>Avg Weight (smoothed): 25.97","Species: OL <br>Year: 1994 <br>Avg Weight (smoothed): 25.58","Species: OL <br>Year: 1995 <br>Avg Weight (smoothed): 25.66","Species: OL <br>Year: 1996 <br>Avg Weight (smoothed): 29.56","Species: OL <br>Year: 1997 <br>Avg Weight (smoothed): 28.94"],"hoverinfo":["text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text"],"type":"scatter","name":"OL","marker":{"color":"rgba(178,156,177,1)","line":{"color":"rgba(178,156,177,1)"}},"textfont":{"color":"rgba(178,156,177,1)"},"error_y":{"color":"rgba(178,156,177,1)"},"error_x":{"color":"rgba(178,156,177,1)"},"line":{"color":"rgba(178,156,177,1)"},"xaxis":"x","yaxis":"y","frame":null},{"x":[1978,1979,1980,1981,1982,1983,1984,1985,1986,1987,1988,1989,1990,1991,1992,1993,1994,1995,1996,1997,1998,1999,2000,2001],"y":[22.431919191919192,23.459696969696967,23.85815850815851,24.474749954537188,24.679530316294294,24.013291000054981,23.059619071434525,21.993727598566309,22.211427856964246,22.880118559051528,23.934574004596083,24.136426415750819,24.308975435358661,24.397377132671252,23.960147695441815,24.192640692640694,24.172590567327408,24.535946347349853,24.369093668778429,24.304845209793129,25.061547149828403,25.234311158449092,24.911683335821266,24.281524605662536],"mode":"lines","text":["Species: OT <br>Year: 1978 <br>Avg Weight (smoothed): 22.43","Species: OT <br>Year: 1979 <br>Avg Weight (smoothed): 23.46","Species: OT <br>Year: 1980 <br>Avg Weight (smoothed): 23.86","Species: OT <br>Year: 1981 <br>Avg Weight (smoothed): 24.47","Species: OT <br>Year: 1982 <br>Avg Weight (smoothed): 24.68","Species: OT <br>Year: 1983 <br>Avg Weight (smoothed): 24.01","Species: OT <br>Year: 1984 <br>Avg Weight (smoothed): 23.06","Species: OT <br>Year: 1985 <br>Avg Weight (smoothed): 21.99","Species: OT <br>Year: 1986 <br>Avg Weight (smoothed): 22.21","Species: OT <br>Year: 1987 <br>Avg Weight (smoothed): 22.88","Species: OT <br>Year: 1988 <br>Avg Weight (smoothed): 23.93","Species: OT <br>Year: 1989 <br>Avg Weight (smoothed): 24.14","Species: OT <br>Year: 1990 <br>Avg Weight (smoothed): 24.31","Species: OT <br>Year: 1991 <br>Avg Weight (smoothed): 24.4","Species: OT <br>Year: 1992 <br>Avg Weight (smoothed): 23.96","Species: OT <br>Year: 1993 <br>Avg Weight (smoothed): 24.19","Species: OT <br>Year: 1994 <br>Avg Weight (smoothed): 24.17","Species: OT <br>Year: 1995 <br>Avg Weight (smoothed): 24.54","Species: OT <br>Year: 1996 <br>Avg Weight (smoothed): 24.37","Species: OT <br>Year: 1997 <br>Avg Weight (smoothed): 24.3","Species: OT <br>Year: 1998 <br>Avg Weight (smoothed): 25.06","Species: OT <br>Year: 1999 <br>Avg Weight (smoothed): 25.23","Species: OT <br>Year: 2000 <br>Avg Weight (smoothed): 24.91","Species: OT <br>Year: 2001 <br>Avg Weight (smoothed): 24.28"],"hoverinfo":["text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text"],"type":"scatter","name":"OT","marker":{"color":"rgba(152,158,202,1)","line":{"color":"rgba(152,158,202,1)"}},"textfont":{"color":"rgba(152,158,202,1)"},"error_y":{"color":"rgba(152,158,202,1)"},"error_x":{"color":"rgba(152,158,202,1)"},"line":{"color":"rgba(152,158,202,1)"},"xaxis":"x","yaxis":"y","frame":null},{"x":[1982,1984],"y":[21.111111111111111,20.666666666666668],"mode":"lines","text":["Species: OX <br>Year: 1982 <br>Avg Weight (smoothed): 21.11","Species: OX <br>Year: 1984 <br>Avg Weight (smoothed): 20.67"],"hoverinfo":["text","text"],"type":"scatter","name":"OX","marker":{"color":"rgba(185,152,199,1)","line":{"color":"rgba(185,152,199,1)"}},"textfont":{"color":"rgba(185,152,199,1)"},"error_y":{"color":"rgba(185,152,199,1)"},"error_x":{"color":"rgba(185,152,199,1)"},"line":{"color":"rgba(185,152,199,1)"},"xaxis":"x","yaxis":"y","frame":null},{"x":[1996,1997,1998,1999,2000,2001],"y":[32.554850160420507,31.248929107788928,30.959292376555641,30.89039103313176,31.795928944000881,32.012398887296584],"mode":"lines","text":["Species: PB <br>Year: 1996 <br>Avg Weight (smoothed): 32.55","Species: PB <br>Year: 1997 <br>Avg Weight (smoothed): 31.25","Species: PB <br>Year: 1998 <br>Avg Weight (smoothed): 30.96","Species: PB <br>Year: 1999 <br>Avg Weight (smoothed): 30.89","Species: PB <br>Year: 2000 <br>Avg Weight (smoothed): 31.8","Species: PB <br>Year: 2001 <br>Avg Weight (smoothed): 32.01"],"hoverinfo":["text","text","text","text","text","text"],"type":"scatter","name":"PB","marker":{"color":"rgba(215,144,197,1)","line":{"color":"rgba(215,144,197,1)"}},"textfont":{"color":"rgba(215,144,197,1)"},"error_y":{"color":"rgba(215,144,197,1)"},"error_x":{"color":"rgba(215,144,197,1)"},"line":{"color":"rgba(215,144,197,1)"},"xaxis":"x","yaxis":"y","frame":null},{"x":[1978,1979,1980,1981,1982,1983,1984,1985,1986,1987,1988,1989,1990,1991,1992,1993,1994,1995,1996,1997,1998,1999,2000,2001],"y":[20.152661064425772,21.135994397759106,21.179183766529871,21.393738819320216,20.865360440941839,20.749489367910421,20.47846372688478,21.030175438596491,21.501966426858512,22.257189243257802,22.06241341479776,22.077524613510025,21.680796420766654,21.952238915893357,21.138751033912325,19.993589743589745,19.487179487179489,20.419515669515672,21.396123856650174,21.087316721756082,22.220914605353965,22.449434623347667,22.481318681318683,21.24489428699955],"mode":"lines","text":["Species: PE <br>Year: 1978 <br>Avg Weight (smoothed): 20.15","Species: PE <br>Year: 1979 <br>Avg Weight (smoothed): 21.14","Species: PE <br>Year: 1980 <br>Avg Weight (smoothed): 21.18","Species: PE <br>Year: 1981 <br>Avg Weight (smoothed): 21.39","Species: PE <br>Year: 1982 <br>Avg Weight (smoothed): 20.87","Species: PE <br>Year: 1983 <br>Avg Weight (smoothed): 20.75","Species: PE <br>Year: 1984 <br>Avg Weight (smoothed): 20.48","Species: PE <br>Year: 1985 <br>Avg Weight (smoothed): 21.03","Species: PE <br>Year: 1986 <br>Avg Weight (smoothed): 21.5","Species: PE <br>Year: 1987 <br>Avg Weight (smoothed): 22.26","Species: PE <br>Year: 1988 <br>Avg Weight (smoothed): 22.06","Species: PE <br>Year: 1989 <br>Avg Weight (smoothed): 22.08","Species: PE <br>Year: 1990 <br>Avg Weight (smoothed): 21.68","Species: PE <br>Year: 1991 <br>Avg Weight (smoothed): 21.95","Species: PE <br>Year: 1992 <br>Avg Weight (smoothed): 21.14","Species: PE <br>Year: 1993 <br>Avg Weight (smoothed): 19.99","Species: PE <br>Year: 1994 <br>Avg Weight (smoothed): 19.49","Species: PE <br>Year: 1995 <br>Avg Weight (smoothed): 20.42","Species: PE <br>Year: 1996 <br>Avg Weight (smoothed): 21.4","Species: PE <br>Year: 1997 <br>Avg Weight (smoothed): 21.09","Species: PE <br>Year: 1998 <br>Avg Weight (smoothed): 22.22","Species: PE <br>Year: 1999 <br>Avg Weight (smoothed): 22.45","Species: PE <br>Year: 2000 <br>Avg Weight (smoothed): 22.48","Species: PE <br>Year: 2001 <br>Avg Weight (smoothed): 21.24"],"hoverinfo":["text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text"],"type":"scatter","name":"PE","marker":{"color":"rgba(224,152,180,1)","line":{"color":"rgba(224,152,180,1)"}},"textfont":{"color":"rgba(224,152,180,1)"},"error_y":{"color":"rgba(224,152,180,1)"},"error_x":{"color":"rgba(224,152,180,1)"},"line":{"color":"rgba(224,152,180,1)"},"xaxis":"x","yaxis":"y","frame":null},{"x":[1978,1979,1980,1981,1982,1983,1984,1986,1987,1988,1989,1990,1991,1992,1993,1994,1995,1996,1997,1998,2001],"y":[7.2638533674339305,7.3577342047930285,7.3791698977142657,7.1756722824519441,6.968264875044536,7.0602745602745607,7.4206349206349209,7.6428571428571432,7.833333333333333,7.5769230769230775,7.4494720965309211,7.3920008321631032,7.904363469525741,8.2780831066343161,8.2872451922581707,8.2915078650692315,8.3431879263015318,8.541046654595041,8.5208316008316007,8.5690367290367302,8.2157834757834767],"mode":"lines","text":["Species: PF <br>Year: 1978 <br>Avg Weight (smoothed): 7.26","Species: PF <br>Year: 1979 <br>Avg Weight (smoothed): 7.36","Species: PF <br>Year: 1980 <br>Avg Weight (smoothed): 7.38","Species: PF <br>Year: 1981 <br>Avg Weight (smoothed): 7.18","Species: PF <br>Year: 1982 <br>Avg Weight (smoothed): 6.97","Species: PF <br>Year: 1983 <br>Avg Weight (smoothed): 7.06","Species: PF <br>Year: 1984 <br>Avg Weight (smoothed): 7.42","Species: PF <br>Year: 1986 <br>Avg Weight (smoothed): 7.64","Species: PF <br>Year: 1987 <br>Avg Weight (smoothed): 7.83","Species: PF <br>Year: 1988 <br>Avg Weight (smoothed): 7.58","Species: PF <br>Year: 1989 <br>Avg Weight (smoothed): 7.45","Species: PF <br>Year: 1990 <br>Avg Weight (smoothed): 7.39","Species: PF <br>Year: 1991 <br>Avg Weight (smoothed): 7.9","Species: PF <br>Year: 1992 <br>Avg Weight (smoothed): 8.28","Species: PF <br>Year: 1993 <br>Avg Weight (smoothed): 8.29","Species: PF <br>Year: 1994 <br>Avg Weight (smoothed): 8.29","Species: PF <br>Year: 1995 <br>Avg Weight (smoothed): 8.34","Species: PF <br>Year: 1996 <br>Avg Weight (smoothed): 8.54","Species: PF <br>Year: 1997 <br>Avg Weight (smoothed): 8.52","Species: PF <br>Year: 1998 <br>Avg Weight (smoothed): 8.57","Species: PF <br>Year: 2001 <br>Avg Weight (smoothed): 8.22"],"hoverinfo":["text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text"],"type":"scatter","name":"PF","marker":{"color":"rgba(205,180,144,1)","line":{"color":"rgba(205,180,144,1)"}},"textfont":{"color":"rgba(205,180,144,1)"},"error_y":{"color":"rgba(205,180,144,1)"},"error_x":{"color":"rgba(205,180,144,1)"},"line":{"color":"rgba(205,180,144,1)"},"xaxis":"x","yaxis":"y","frame":null},{"x":[1985,1986,1988,1989,1990,1992,1995],"y":[33.222222222222221,34.888888888888886,34.166666666666664,31.547619047619047,30.928571428571427,32.539682539682538,29.49206349206349],"mode":"lines","text":["Species: PH <br>Year: 1985 <br>Avg Weight (smoothed): 33.22","Species: PH <br>Year: 1986 <br>Avg Weight (smoothed): 34.89","Species: PH <br>Year: 1988 <br>Avg Weight (smoothed): 34.17","Species: PH <br>Year: 1989 <br>Avg Weight (smoothed): 31.55","Species: PH <br>Year: 1990 <br>Avg Weight (smoothed): 30.93","Species: PH <br>Year: 1992 <br>Avg Weight (smoothed): 32.54","Species: PH <br>Year: 1995 <br>Avg Weight (smoothed): 29.49"],"hoverinfo":["text","text","text","text","text","text","text"],"type":"scatter","name":"PH","marker":{"color":"rgba(180,206,104,1)","line":{"color":"rgba(180,206,104,1)"}},"textfont":{"color":"rgba(180,206,104,1)"},"error_y":{"color":"rgba(180,206,104,1)"},"error_x":{"color":"rgba(180,206,104,1)"},"line":{"color":"rgba(180,206,104,1)"},"xaxis":"x","yaxis":"y","frame":null},{"x":[2001],"y":[18.666666666666668],"mode":"lines","text":"Species: PI <br>Year: 2001 <br>Avg Weight (smoothed): 18.67","hoverinfo":"text","type":"scatter","name":"PI","marker":{"color":"rgba(186,217,78,1)","line":{"color":"rgba(186,217,78,1)"}},"textfont":{"color":"rgba(186,217,78,1)"},"error_y":{"color":"rgba(186,217,78,1)"},"error_x":{"color":"rgba(186,217,78,1)"},"line":{"color":"rgba(186,217,78,1)"},"xaxis":"x","yaxis":"y","frame":null},{"x":[1996,1997,1998],"y":[20.763157894736842,18.890142021720973,18.834586466165415],"mode":"lines","text":["Species: PL <br>Year: 1996 <br>Avg Weight (smoothed): 20.76","Species: PL <br>Year: 1997 <br>Avg Weight (smoothed): 18.89","Species: PL <br>Year: 1998 <br>Avg Weight (smoothed): 18.83"],"hoverinfo":["text","text","text"],"type":"scatter","name":"PL","marker":{"color":"rgba(217,217,66,1)","line":{"color":"rgba(217,217,66,1)"}},"textfont":{"color":"rgba(217,217,66,1)"},"error_y":{"color":"rgba(217,217,66,1)"},"error_x":{"color":"rgba(217,217,66,1)"},"line":{"color":"rgba(217,217,66,1)"},"xaxis":"x","yaxis":"y","frame":null},{"x":[1979,1980,1981,1982,1983,1984,1985,1986,1987,1988,1989,1995,1996,1997,1998,1999,2000,2001],"y":[21.777777777777782,21.533333333333335,20.774879227053145,21.116149068322983,20.986856139030056,20.189754689754693,20.080808080808083,20.998226540211274,21.917979626631027,21.426397135048536,23.118827160493833,22.607237339380202,22.908627949320998,20.647427232475113,21.413867141772169,21.205069124423968,23.230158730158735,22.055555555555557],"mode":"lines","text":["Species: PM <br>Year: 1979 <br>Avg Weight (smoothed): 21.78","Species: PM <br>Year: 1980 <br>Avg Weight (smoothed): 21.53","Species: PM <br>Year: 1981 <br>Avg Weight (smoothed): 20.77","Species: PM <br>Year: 1982 <br>Avg Weight (smoothed): 21.12","Species: PM <br>Year: 1983 <br>Avg Weight (smoothed): 20.99","Species: PM <br>Year: 1984 <br>Avg Weight (smoothed): 20.19","Species: PM <br>Year: 1985 <br>Avg Weight (smoothed): 20.08","Species: PM <br>Year: 1986 <br>Avg Weight (smoothed): 21","Species: PM <br>Year: 1987 <br>Avg Weight (smoothed): 21.92","Species: PM <br>Year: 1988 <br>Avg Weight (smoothed): 21.43","Species: PM <br>Year: 1989 <br>Avg Weight (smoothed): 23.12","Species: PM <br>Year: 1995 <br>Avg Weight (smoothed): 22.61","Species: PM <br>Year: 1996 <br>Avg Weight (smoothed): 22.91","Species: PM <br>Year: 1997 <br>Avg Weight (smoothed): 20.65","Species: PM <br>Year: 1998 <br>Avg Weight (smoothed): 21.41","Species: PM <br>Year: 1999 <br>Avg Weight (smoothed): 21.21","Species: PM <br>Year: 2000 <br>Avg Weight (smoothed): 23.23","Species: PM <br>Year: 2001 <br>Avg Weight (smoothed): 22.06"],"hoverinfo":["text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text"],"type":"scatter","name":"PM","marker":{"color":"rgba(247,217,52,1)","line":{"color":"rgba(247,217,52,1)"}},"textfont":{"color":"rgba(247,217,52,1)"},"error_y":{"color":"rgba(247,217,52,1)"},"error_x":{"color":"rgba(247,217,52,1)"},"line":{"color":"rgba(247,217,52,1)"},"xaxis":"x","yaxis":"y","frame":null},{"x":[1978,1979,1980,1981,1982,1983,1984,1985,1986,1987,1988,1989,1990,1991,1992,1993,1994,1995,1996,1997,1998,1999,2000,2001],"y":[15.102720569539791,14.717099654507111,14.410577915376676,14.750490196078431,15.181249999999999,15.633814102564102,15.513716063348417,15.940799396681749,16.785204991087344,17.623636363636361,17.843333333333334,17.239500891265596,17.114421526186231,17.137949488738585,17.779486563338541,17.673137356989333,17.461393906221492,17.508573956696825,17.705002528125394,17.512517810397959,16.987734137491419,16.525606766217706,17.020908586762243,17.186710220117071],"mode":"lines","text":["Species: PP <br>Year: 1978 <br>Avg Weight (smoothed): 15.1","Species: PP <br>Year: 1979 <br>Avg Weight (smoothed): 14.72","Species: PP <br>Year: 1980 <br>Avg Weight (smoothed): 14.41","Species: PP <br>Year: 1981 <br>Avg Weight (smoothed): 14.75","Species: PP <br>Year: 1982 <br>Avg Weight (smoothed): 15.18","Species: PP <br>Year: 1983 <br>Avg Weight (smoothed): 15.63","Species: PP <br>Year: 1984 <br>Avg Weight (smoothed): 15.51","Species: PP <br>Year: 1985 <br>Avg Weight (smoothed): 15.94","Species: PP <br>Year: 1986 <br>Avg Weight (smoothed): 16.79","Species: PP <br>Year: 1987 <br>Avg Weight (smoothed): 17.62","Species: PP <br>Year: 1988 <br>Avg Weight (smoothed): 17.84","Species: PP <br>Year: 1989 <br>Avg Weight (smoothed): 17.24","Species: PP <br>Year: 1990 <br>Avg Weight (smoothed): 17.11","Species: PP <br>Year: 1991 <br>Avg Weight (smoothed): 17.14","Species: PP <br>Year: 1992 <br>Avg Weight (smoothed): 17.78","Species: PP <br>Year: 1993 <br>Avg Weight (smoothed): 17.67","Species: PP <br>Year: 1994 <br>Avg Weight (smoothed): 17.46","Species: PP <br>Year: 1995 <br>Avg Weight (smoothed): 17.51","Species: PP <br>Year: 1996 <br>Avg Weight (smoothed): 17.71","Species: PP <br>Year: 1997 <br>Avg Weight (smoothed): 17.51","Species: PP <br>Year: 1998 <br>Avg Weight (smoothed): 16.99","Species: PP <br>Year: 1999 <br>Avg Weight (smoothed): 16.53","Species: PP <br>Year: 2000 <br>Avg Weight (smoothed): 17.02","Species: PP <br>Year: 2001 <br>Avg Weight (smoothed): 17.19"],"hoverinfo":["text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text"],"type":"scatter","name":"PP","marker":{"color":"rgba(250,212,80,1)","line":{"color":"rgba(250,212,80,1)"}},"textfont":{"color":"rgba(250,212,80,1)"},"error_y":{"color":"rgba(250,212,80,1)"},"error_x":{"color":"rgba(250,212,80,1)"},"line":{"color":"rgba(250,212,80,1)"},"xaxis":"x","yaxis":"y","frame":null},{"x":[1988,1989,1990],"y":[12.888373531230675,13.360595753452897,15.421201814058955],"mode":"lines","text":["Species: RF <br>Year: 1988 <br>Avg Weight (smoothed): 12.89","Species: RF <br>Year: 1989 <br>Avg Weight (smoothed): 13.36","Species: RF <br>Year: 1990 <br>Avg Weight (smoothed): 15.42"],"hoverinfo":["text","text","text"],"type":"scatter","name":"RF","marker":{"color":"rgba(241,204,114,1)","line":{"color":"rgba(241,204,114,1)"}},"textfont":{"color":"rgba(241,204,114,1)"},"error_y":{"color":"rgba(241,204,114,1)"},"error_x":{"color":"rgba(241,204,114,1)"},"line":{"color":"rgba(241,204,114,1)"},"xaxis":"x","yaxis":"y","frame":null},{"x":[1978,1979,1980,1981,1982,1983,1984,1985,1986,1987,1988,1989,1990,1991,1992,1993,1994,1995,1996,1997,1998,1999,2000,2001],"y":[8.6111111111111125,8.6868686868686869,9.9130591630591649,10.614028588860805,10.495604346436563,10.486927994539871,9.7986569814366433,10.091323648103311,9.9263457556935819,10.57657469342252,10.463678378084046,10.34636776483172,10.405097664875179,10.569581281800955,10.716847245660807,10.775745550745553,11.358773633773636,11.59480056980057,11.780056980056981,11.928774928774928,11.628774928774929,11.685185185185185,11.096296296296297,10.911111111111111],"mode":"lines","text":["Species: RM <br>Year: 1978 <br>Avg Weight (smoothed): 8.61","Species: RM <br>Year: 1979 <br>Avg Weight (smoothed): 8.69","Species: RM <br>Year: 1980 <br>Avg Weight (smoothed): 9.91","Species: RM <br>Year: 1981 <br>Avg Weight (smoothed): 10.61","Species: RM <br>Year: 1982 <br>Avg Weight (smoothed): 10.5","Species: RM <br>Year: 1983 <br>Avg Weight (smoothed): 10.49","Species: RM <br>Year: 1984 <br>Avg Weight (smoothed): 9.8","Species: RM <br>Year: 1985 <br>Avg Weight (smoothed): 10.09","Species: RM <br>Year: 1986 <br>Avg Weight (smoothed): 9.93","Species: RM <br>Year: 1987 <br>Avg Weight (smoothed): 10.58","Species: RM <br>Year: 1988 <br>Avg Weight (smoothed): 10.46","Species: RM <br>Year: 1989 <br>Avg Weight (smoothed): 10.35","Species: RM <br>Year: 1990 <br>Avg Weight (smoothed): 10.41","Species: RM <br>Year: 1991 <br>Avg Weight (smoothed): 10.57","Species: RM <br>Year: 1992 <br>Avg Weight (smoothed): 10.72","Species: RM <br>Year: 1993 <br>Avg Weight (smoothed): 10.78","Species: RM <br>Year: 1994 <br>Avg Weight (smoothed): 11.36","Species: RM <br>Year: 1995 <br>Avg Weight (smoothed): 11.59","Species: RM <br>Year: 1996 <br>Avg Weight (smoothed): 11.78","Species: RM <br>Year: 1997 <br>Avg Weight (smoothed): 11.93","Species: RM <br>Year: 1998 <br>Avg Weight (smoothed): 11.63","Species: RM <br>Year: 1999 <br>Avg Weight (smoothed): 11.69","Species: RM <br>Year: 2000 <br>Avg Weight (smoothed): 11.1","Species: RM <br>Year: 2001 <br>Avg Weight (smoothed): 10.91"],"hoverinfo":["text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text","text"],"type":"scatter","name":"RM","marker":{"color":"rgba(231,197,144,1)","line":{"color":"rgba(231,197,144,1)"}},"textfont":{"color":"rgba(231,197,144,1)"},"error_y":{"color":"rgba(231,197,144,1)"},"error_x":{"color":"rgba(231,197,144,1)"},"line":{"color":"rgba(231,197,144,1)"},"xaxis":"x","yaxis":"y","frame":null},{"x":[1990,1991,1992,1993],"y":[66.859259259259261,62.925925925925924,60.055555555555564,49.722222222222221],"mode":"lines","text":["Species: SF <br>Year: 1990 <br>Avg Weight (smoothed): 66.86","Species: SF <br>Year: 1991 <br>Avg Weight (smoothed): 62.93","Species: SF <br>Year: 1992 <br>Avg Weight (smoothed): 60.06","Species: SF <br>Year: 1993 <br>Avg Weight (smoothed): 49.72"],"hoverinfo":["text","text","text","text"],"type":"scatter","name":"SF","marker":{"color":"rgba(215,191,158,1)","line":{"color":"rgba(215,191,158,1)"}},"textfont":{"color":"rgba(215,191,158,1)"},"error_y":{"color":"rgba(215,191,158,1)"},"error_x":{"color":"rgba(215,191,158,1)"},"line":{"color":"rgba(215,191,158,1)"},"xaxis":"x","yaxis":"y","frame":null},{"x":[1982,1986,1987,1988,1989,1990,1991,1997,1999,2000,2001],"y":[74.333333333333329,69.266666666666666,67.202150537634409,74.317302052785919,75.346931682415558,72.078114478114472,63.582010582010582,55.952380952380956,59.410714285714285,69.091666666666669,72.647222222222226],"mode":"lines","text":["Species: SH <br>Year: 1982 <br>Avg Weight (smoothed): 74.33","Species: SH <br>Year: 1986 <br>Avg Weight (smoothed): 69.27","Species: SH <br>Year: 1987 <br>Avg Weight (smoothed): 67.2","Species: SH <br>Year: 1988 <br>Avg Weight (smoothed): 74.32","Species: SH <br>Year: 1989 <br>Avg Weight (smoothed): 75.35","Species: SH <br>Year: 1990 <br>Avg Weight (smoothed): 72.08","Species: SH <br>Year: 1991 <br>Avg Weight (smoothed): 63.58","Species: SH <br>Year: 1997 <br>Avg Weight (smoothed): 55.95","Species: SH <br>Year: 1999 <br>Avg Weight (smoothed): 59.41","Species: SH <br>Year: 2000 <br>Avg Weight (smoothed): 69.09","Species: SH <br>Year: 2001 <br>Avg Weight (smoothed): 72.65"],"hoverinfo":["text","text","text","text","text","text","text","text","text","text","text"],"type":"scatter","name":"SH","marker":{"color":"rgba(198,185,168,1)","line":{"color":"rgba(198,185,168,1)"}},"textfont":{"color":"rgba(198,185,168,1)"},"error_y":{"color":"rgba(198,185,168,1)"},"error_x":{"color":"rgba(198,185,168,1)"},"line":{"color":"rgba(198,185,168,1)"},"xaxis":"x","yaxis":"y","frame":null},{"x":[1992,1993,1994],"y":[54.924082934609253,57.732163742690062,57.533333333333331],"mode":"lines","text":["Species: SO <br>Year: 1992 <br>Avg Weight (smoothed): 54.92","Species: SO <br>Year: 1993 <br>Avg Weight (smoothed): 57.73","Species: SO <br>Year: 1994 <br>Avg Weight (smoothed): 57.53"],"hoverinfo":["text","text","text"],"type":"scatter","name":"SO","marker":{"color":"rgba(179,179,179,1)","line":{"color":"rgba(179,179,179,1)"}},"textfont":{"color":"rgba(179,179,179,1)"},"error_y":{"color":"rgba(179,179,179,1)"},"error_x":{"color":"rgba(179,179,179,1)"},"line":{"color":"rgba(179,179,179,1)"},"xaxis":"x","yaxis":"y","frame":null}],"highlight":{"on":"plotly_click","persistent":false,"dynamic":false,"selectize":false,"opacityDim":0.20000000000000001,"selected":{"opacity":1},"debounce":0},"shinyEvents":["plotly_hover","plotly_click","plotly_selected","plotly_relayout","plotly_brushed","plotly_brushing","plotly_clickannotation","plotly_doubleclick","plotly_deselect","plotly_afterplot","plotly_sunburstclick"],"base_url":"https://plot.ly"},"evals":[],"jsHooks":[]}</script>
+</div>
+</div>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

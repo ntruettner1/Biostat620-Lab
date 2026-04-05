@@ -1,0 +1,329 @@
+---
+title: "Assignment 4 - HPC, SQL, and interactive plots"
+author: "Nate Truettner"
+format: html
+---
+```{r}
+library(microbenchmark)
+library(ggplot2)
+library(plotly)
+library(dplyr)
+```
+
+## Question 1
+```{r}
+# running cumulative sum by row
+fun2 <- function(mat) {
+  n <- nrow(mat)
+  k <- ncol(mat)
+  ans <- mat
+  for (i in 1:n) {
+    for (j in 2:k) {
+      ans[i,j] <- mat[i, j] + ans[i, j - 1]
+    }
+  }
+  ans
+}
+
+fun2alt <- function(mat) {
+  ans <- mat
+  for (j in 2:ncol(mat)) {
+    ans[, j] <- ans[, j] + ans[, j - 1]
+  }
+  ans
+}
+```
+
+```{r}
+# Use the functions with this data
+set.seed(2315)
+dat <- matrix(rnorm(200 * 100), nrow = 200)
+identical(fun2(dat), fun2alt(dat)) 
+mb <- microbenchmark(
+  original   = fun2(dat),
+  updated = fun2alt(dat),
+  times = 100L
+)
+mb
+autoplot(mb) +
+  labs(title = "fun2 vs fun2alt runtime", x = "Time (µs)") +
+  theme_minimal()
+```
+As shown in the plot, we notice that the updated function takes significantly less time to run than the original function. By cutting down to only one for loop, we greatly enhance the efficiency of the process.
+
+## Question 2
+```{r}
+fun3 <- function(x) {
+  out <- numeric(length(x))
+  cumsum_x <- 0
+  for (i in seq_along(x)) {
+    if (x[i] == 0) {
+      cumsum_x <- 0
+    } else {
+      cumsum_x <- cumsum_x + x[i] 
+    }
+    out[i] <- cumsum_x
+  }
+  out
+}
+
+library(Rcpp)
+
+cppFunction('
+NumericVector fast_fun3_cpp(NumericVector x) {
+  int n = x.size();
+  NumericVector out(n);
+  
+  double cs = 0.0;
+  
+  for (int i = 0; i < n; i++) {
+    if (x[i] == 0) {
+      cs = 0.0;
+    } else {
+      cs += x[i];
+    }
+    out[i] = cs;
+  }
+  
+  return out;
+}
+')
+set.seed(123)
+x <- sample(c(0:3), 1e6, replace = TRUE)
+
+
+mb <- microbenchmark(
+  original = fun3(x),
+  cpp      = fast_fun3_cpp(x),
+  times = 50
+)
+print(mb)
+```
+I tried many different implementations only using R, so I looked up how to use Rcpp to speed up the process and found that it significantly sped up the function.
+
+## Question 3
+```{r}
+sim_pi <- function(n = 1000, i = NULL) {
+  p <- matrix(runif(n*2), ncol = 2)
+  mean(rowSums(p^2) < 1) * 4
+}
+
+# Here is an example of the run
+set.seed(156)
+sim_pi(1000) # 3.132
+
+library(parallel)
+
+set.seed(1231)
+
+system.time({
+  cl <- makeCluster(detectCores() - 1)
+  
+  clusterExport(cl, varlist = c("sim_pi"))
+  
+  ans_par <- unlist(parLapply(cl, 1:4000, sim_pi, n = 10000))
+  
+  stopCluster(cl)
+  
+  print(mean(ans_par))
+})
+
+#now run for initial process
+set.seed(1231)
+
+system.time({
+  ans_seq <- unlist(lapply(1:4000, sim_pi, n = 10000))
+  print(mean(ans_seq))
+})
+
+library(ggplot2)
+
+df <- data.frame(
+  value = c(ans_seq, ans_par),
+  method = rep(c("Sequential", "Parallel"), each = length(ans_seq))
+)
+
+ggplot(df, aes(x = value, fill = method)) +
+  geom_density(alpha = 0.4) +
+  geom_vline(xintercept = pi, linetype = "dashed") +
+  labs(
+    title = "Distribution of Pi Estimates",
+    x = "Estimated Pi",
+    y = "Density"
+  ) +
+  theme_bw()
+
+
+mb <- microbenchmark(
+  sequential = unlist(lapply(1:4000, sim_pi, n = 10000)),
+  parallel = {
+    cl <- makeCluster(detectCores() - 1)
+    clusterExport(cl, "sim_pi")
+    res <- unlist(parLapply(cl, 1:4000, sim_pi, n = 10000))
+    stopCluster(cl)
+    res
+  },
+  times = 10
+)
+
+print(mb)
+
+autoplot(mb)
+```
+While it is not a dramatic improvement, the parallel process did slightly speed up the computation. I wonder if my computer being old and not very powerful made this closer than I thought it would be. Both methods yield similar results for estimation of pi.
+
+## Question 4
+```{r}
+library(RSQLite)
+library(DBI)
+
+con <- dbConnect(RSQLite::SQLite(), dbname = ":memory:")
+
+surveys <- read.csv("surveys.csv")
+species <- read.csv("species.csv")
+plots   <- read.csv("plots.csv")
+
+dbWriteTable(con, "surveys", surveys)
+dbWriteTable(con, "species", species)
+dbWriteTable(con, "plots",   plots)
+
+dbListTables(con)
+```
+```{sql connection=con}
+PRAGMA table_info(surveys)
+```
+```{sql connection=con}
+SELECT month, day, year, species_id, ROUND(weight / 1000.0, 2) AS weight_kg
+FROM surveys
+WHERE year = 1999
+ORDER BY species_id
+```
+## Question 5
+```{sql connection=con}
+SELECT SUM(weight) AS "Total Weight", AVG(weight) AS "Average Weight", MIN(weight) AS "Minimum Weight", MAX(weight) AS "Maximum Weight"
+FROM surveys
+WHERE weight BETWEEN 5 AND 10
+```
+## Question 6
+```{r}
+yearly_species_summary <- dbGetQuery(con, "
+  SELECT year,
+         species_id,
+         COUNT(*)       AS count,
+         AVG(weight)    AS avg_weight
+  FROM surveys
+  WHERE species_id IS NOT NULL
+  GROUP BY year, species_id
+  ORDER BY year, species_id
+")
+
+yearly_species_summary
+```
+## Question 7
+```{sql connection=con}
+SELECT taxa, COUNT(*) AS "Number of Species"
+FROM species
+GROUP BY taxa
+HAVING COUNT(*) > 10
+```
+## Question 8
+```{r}
+genus_plot_counts <- dbGetQuery(con, "
+  SELECT p.plot_id,
+         sp.genus,
+         COUNT(*) AS num_animals
+  FROM surveys s
+  JOIN plots   p  ON s.plot_id   = p.plot_id
+  JOIN species sp ON s.species_id = sp.species_id
+  WHERE sp.genus IS NOT NULL
+  GROUP BY p.plot_id, sp.genus
+  ORDER BY p.plot_id ASC, num_animals DESC
+")
+
+genus_plot_counts
+```
+## Question 9
+```{sql connection=con}
+SELECT p.plot_type,
+         sp.species_id,
+         sp.genus,
+         sp.species,
+         COUNT(*) AS "Number Captured"
+FROM surveys s
+JOIN plots   p  ON s.plot_id    = p.plot_id
+JOIN species sp ON s.species_id = sp.species_id
+WHERE sp.species != 'sp.' AND sp.species IS NOT NULL
+GROUP BY p.plot_type, sp.species_id, sp.genus, sp.species
+ORDER BY p.plot_type, "Number Captured" DESC
+```
+## Question 10
+```{sql connection=con}
+SELECT sp.species_id,
+         sp.species,
+         AVG(s.weight) AS avg_weight
+FROM surveys s
+JOIN species sp ON s.species_id = sp.species_id
+WHERE sp.taxa = 'Rodent' AND s.weight IS NOT NULL
+GROUP BY sp.species_id
+ORDER BY avg_weight DESC
+```
+## Question 11
+```{r}
+library(ggplot2)
+library(plotly)
+
+plot_subset <- subset(genus_plot_counts, plot_id %in% 1:5)
+plot_subset$plot_id <- as.factor(plot_subset$plot_id)
+
+p <- ggplot(plot_subset, aes(x = plot_id, y = num_animals, fill = genus)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(
+    title = "Number of Animals Captured by Genus and Plot (Plots 1-5)",
+    x     = "Plot ID",
+    y     = "Number of Animals",
+    fill  = "Genus"
+  ) +
+  theme_minimal()
+
+ggplotly(p)
+```
+## Question 12
+```{r}
+library(dplyr)
+
+smoothed <- yearly_species_summary %>%
+  filter(!is.na(avg_weight)) %>%
+  group_by(species_id) %>%
+  arrange(year) %>%
+  mutate(smooth_weight = zoo::rollmean(avg_weight, k = 3, fill = NA, align = "center")) %>%
+  filter(!is.na(smooth_weight)) %>%
+  ungroup()
+
+plot_ly(
+  data   = smoothed,
+  x      = ~year,
+  y      = ~smooth_weight,
+  color  = ~species_id,
+  type   = "scatter",
+  mode   = "lines",
+  text   = ~paste("Species:", species_id,
+                  "<br>Year:", year,
+                  "<br>Avg Weight (smoothed):", round(smooth_weight, 2)),
+  hoverinfo = "text"
+) %>%
+  layout(
+    title = list(text = "Average Weight Over Time by Species (3-Year Rolling Mean)"),
+    xaxis = list(title = "Year"),
+    yaxis = list(title = "Average Weight (g)"),
+    legend = list(title = list(text = "Species")),
+    hovermode = "closest"
+  )
+```
+
+
+
+
+
+
+
+
