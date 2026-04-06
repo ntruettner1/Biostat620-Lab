@@ -1,0 +1,79 @@
+[
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "Lab 11 - Website",
+    "section": "",
+    "text": "Profile Photo"
+  },
+  {
+    "objectID": "index.html#about-me",
+    "href": "index.html#about-me",
+    "title": "Lab 11 - Website",
+    "section": "About Me",
+    "text": "About Me\nHello everyone, my name is Nate Truettner and I am a second-year master’s student at the University of Michigan in the Computational Epidemiology program."
+  },
+  {
+    "objectID": "index.html#education",
+    "href": "index.html#education",
+    "title": "lab11website",
+    "section": "Education",
+    "text": "Education\nUniversity Name\nDegree, Field (Year – Year)\n- Relevant coursework:\n- GPA (optional)"
+  },
+  {
+    "objectID": "index.html#experience",
+    "href": "index.html#experience",
+    "title": "Lab 11 - Website",
+    "section": "Experience",
+    "text": "Experience\nCancer Epidemiology, Prevention, and Control Intern - Henry Ford Health\nMay - August 2025\n– Utilized R and Python to conduct data analysis for prostate cancer prevention research – Analyzed relationship between cellular senescence and prostate cancer risk – Delivered group presentation on AI and its proper uses in research"
+  },
+  {
+    "objectID": "index.html#skills",
+    "href": "index.html#skills",
+    "title": "Lab 11 - Website",
+    "section": "Skills",
+    "text": "Skills\n\nProgramming: R, Python, SQL\n\nData Analysis: Regression, Visualization"
+  },
+  {
+    "objectID": "index.html#projects",
+    "href": "index.html#projects",
+    "title": "Lab 11 - Website",
+    "section": "Projects",
+    "text": "Projects\n\nEnsemble Model for Valley Fever in Arizona\n\nCreated an ensemble model in R for forecasting valley fever incidence in 3 counties in Arizona\nCreated visuals to show projected disease burden and fit to observed data\nUtilized DLNMs and quasipoisson methods"
+  },
+  {
+    "objectID": "index.html#resume",
+    "href": "index.html#resume",
+    "title": "Lab 11 - Website",
+    "section": "Resume",
+    "text": "Resume\nDownload my resume"
+  },
+  {
+    "objectID": "index.html#contact",
+    "href": "index.html#contact",
+    "title": "Lab 11 - Website",
+    "section": "Contact",
+    "text": "Contact\n\nEmail: ntruettn@umich.edu\nLinkedIn: https://www.linkedin.com/in/nathan-truettner-244232229/\nGitHub: https://github.com/ntruettner1"
+  },
+  {
+    "objectID": "about.html",
+    "href": "about.html",
+    "title": "About",
+    "section": "",
+    "text": "About this site\n\n1 + 1\n\n[1] 2"
+  },
+  {
+    "objectID": "index.html#education-completed",
+    "href": "index.html#education-completed",
+    "title": "Lab 11 - Website",
+    "section": "Education Completed",
+    "text": "Education Completed\nUniversity of Wisconsin-Madison\nB.S., Biology (2019 – 2023)\nB.S., Chemistry (2019 – 2023)\nCertificate, Environmental Studies (2019 – 2023)"
+  },
+  {
+    "objectID": "index.html#hobbiesfavorites",
+    "href": "index.html#hobbiesfavorites",
+    "title": "Lab 11 - Website",
+    "section": "Hobbies/Favorites",
+    "text": "Hobbies/Favorites\n\nIn my free time, I enjoy going to the movies, baseball, long hikes, and reading\nFavorite book: The Dark Forest by Cixin Liu\nFavorite video game: Uncharted 4"
+  }
+]
